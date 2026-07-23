@@ -1,0 +1,2812 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Billing System - Modern Edition</title>
+
+    <meta name="theme-color" content="#0b1121">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        :root {
+            /* Palette Modern Dark/Glass */
+            --bg-body: #0b1121;
+            --bg-glass: rgba(30, 41, 59, 0.7);
+            --bg-glass-hover: rgba(30, 41, 59, 0.9);
+            --border-glass: rgba(255, 255, 255, 0.08);
+
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+
+            --accent: #10b981;
+            --accent-hover: #059669;
+            --accent-glow: rgba(16, 185, 129, 0.2);
+
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --primary-glow: rgba(59, 130, 246, 0.2);
+
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+
+            --paper-bg: #ffffff;
+            --paper-text: #0f172a;
+            --paper-border: #e2e8f0;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Poppins', sans-serif; background: var(--bg-body); background-image: radial-gradient(circle at top right, #1e293b, transparent 40%), radial-gradient(circle at bottom left, #0f172a, transparent 40%); color: var(--text-main); height: 100vh; height: 100dvh; display: flex; overflow: hidden; }
+        button, input, select { font: inherit; }
+        button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+        ::-webkit-scrollbar { width: 6px; height: 6px;}
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+        /* --- SIDEBAR --- */
+        .sidebar { width: 420px; background: var(--bg-glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-right: 1px solid var(--border-glass); display: flex; flex-direction: column; height: 100%; box-shadow: 4px 0 24px rgba(0,0,0,0.2); z-index: 10; transition: all 0.3s ease; }
+
+        .brand-header { padding: 24px; font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid var(--border-glass); }
+        .brand-icon { background: linear-gradient(135deg, var(--accent), #34d399); color: white; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 12px; box-shadow: 0 4px 15px var(--accent-glow); font-size: 22px;}
+
+        .tools-area { padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; border-bottom: 1px solid var(--border-glass); flex-shrink: 1; min-height: 0; max-height: 72%; overflow-y: auto; }
+
+        .file-upload-wrapper { position: relative; background: rgba(16, 185, 129, 0.05); border: 1.5px dashed var(--accent); padding: 14px; border-radius: 12px; text-align: center; transition: all 0.3s; }
+        .file-upload-wrapper:hover { background: var(--accent-glow); transform: translateY(-2px); }
+        .file-upload-wrapper input[type="file"] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+        .file-upload-text { color: var(--accent); font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;}
+
+        .sheet-selector-wrapper { background: rgba(0,0,0,0.2); border: 1px solid var(--border-glass); padding: 12px; border-radius: 12px; display: none; }
+        .sheet-selector-wrapper label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; display: block; }
+        .sheet-selector-wrapper select { width: 100%; padding: 8px 12px; border-radius: 8px; background: var(--bg-body); color: white; border: 1px solid rgba(255,255,255,0.1); font-family: 'Poppins', sans-serif; font-size: 13px; outline: none; transition: 0.2s;}
+        .sheet-selector-wrapper select:focus { border-color: var(--primary); }
+        .cache-status { display: none; padding: 10px 12px; border-radius: 10px; background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.25); color: #bfdbfe; font-size: 11px; line-height: 1.5; }
+        .cache-status strong { color: #fff; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        .search-container { position: relative; width: 100%; }
+        .search-container i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 18px;}
+        .search-box { width: 100%; padding: 12px 14px 12px 40px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-glass); color: white; border-radius: 12px; font-family: 'Poppins', sans-serif; font-size: 14px; transition: 0.3s;}
+        .search-box:focus { outline: none; border-color: var(--primary); background: rgba(0,0,0,0.4); box-shadow: 0 0 0 3px var(--primary-glow);}
+
+        /* FILTER TAGIHAN */
+        .bill-filter-panel { border: 1px solid var(--border-glass); border-radius: 12px; background: rgba(0,0,0,0.18); overflow: hidden; }
+        .bill-filter-panel summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 12px; cursor: pointer; color: var(--text-main); font-size: 12px; font-weight: 600; }
+        .bill-filter-panel summary::-webkit-details-marker { display: none; }
+        .bill-filter-panel summary::after { content: '\25BE'; color: var(--text-muted); transition: transform .2s ease; }
+        .bill-filter-panel[open] summary::after { transform: rotate(180deg); }
+        .bill-filter-panel.has-active-filter { border-color: rgba(59,130,246,.55); background: rgba(59,130,246,.07); }
+        .filter-summary-label { display: flex; align-items: center; gap: 7px; min-width: 0; }
+        .filter-result-count { margin-left: auto; padding: 2px 7px; border-radius: 999px; background: rgba(255,255,255,.07); color: var(--text-muted); font-size: 10px; white-space: nowrap; }
+        .bill-filter-content { padding: 0 12px 12px; border-top: 1px solid var(--border-glass); }
+        .bill-filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; padding-top: 11px; }
+        .filter-field label { display: block; margin-bottom: 4px; color: var(--text-muted); font-size: 10px; }
+        .filter-field select { width: 100%; min-width: 0; padding: 8px; border: 1px solid var(--border-glass); border-radius: 8px; background: #111827; color: var(--text-main); font-size: 11px; }
+        .filter-reset { width: 100%; margin-top: 10px; padding: 8px; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(255,255,255,.05); color: var(--text-main); font-size: 11px; font-weight: 600; cursor: pointer; }
+        .filter-reset:hover { background: rgba(255,255,255,.1); }
+
+        /* KONTROL TAGIHAN */
+        .control-panel { background: rgba(255,255,255,0.03); padding: 16px; border-radius: 16px; border: 1px solid var(--border-glass); display: none; margin-top: 5px; animation: fadeIn 0.3s ease;}
+        .control-panel label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 8px; font-weight: 500;}
+        .periode-selector { background: rgba(0,0,0,0.2); padding: 12px; border-radius: 10px; margin-bottom: 14px; max-height: 120px; overflow-y: auto; font-size: 13px; border: 1px solid var(--border-glass); }
+        .periode-selector div { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed rgba(255,255,255,0.1); }
+        .periode-selector div:last-child { border-bottom: none; }
+        .periode-selector input[type="checkbox"] { accent-color: var(--accent); width: 18px; height: 18px; cursor: pointer; }
+        .checkbox-label { display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--text-main); }
+
+        .btn-action-sm { padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s; border: none; width: 100%; font-family: 'Poppins'; display: flex; align-items: center; justify-content: center; gap: 8px;}
+        .btn-gray { background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); color: var(--text-main); }
+        .btn-gray:hover { background: rgba(255,255,255,0.1); transform: translateY(-1px);}
+        .btn-blue { background: var(--primary-glow); border: 1px solid var(--primary); color: #93c5fd; }
+        .btn-blue:hover { background: var(--primary); color: white; box-shadow: 0 4px 15px var(--primary-glow);}
+
+        .btn-simpan { background: linear-gradient(135deg, var(--primary), #60a5fa); color: white; border: none; padding: 12px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s; width: 100%; box-shadow: 0 4px 15px var(--primary-glow);}
+        .btn-simpan:hover { filter: brightness(1.1); transform: translateY(-2px); }
+
+        /* LIST NAMA PELANGGAN */
+        .list-container { flex: 1; min-height: 130px; overflow-y: auto; padding: 20px 24px; }
+        .list-item { padding: 16px; border-radius: 12px; margin-bottom: 10px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-glass); cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .list-item:hover { background: rgba(255, 255, 255, 0.06); transform: translateX(4px); border-color: rgba(255,255,255,0.2);}
+        .list-item.active { background: var(--accent); border-color: var(--accent); box-shadow: 0 8px 20px var(--accent-glow); }
+        .list-item .name { font-weight: 600; font-size: 14px; margin-bottom: 6px; line-height: 1.4; color: var(--text-main); }
+        .list-item .details { font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center;}
+        .list-item.active .details { color: rgba(255,255,255,0.9); }
+
+        /* --- MAIN AREA --- */
+        .main-area { flex: 1; display: flex; flex-direction: column; overflow-y: auto; position: relative; }
+        .dashboard-panel { width: calc(100% - 80px); max-width: 1000px; margin: 28px auto 0; }
+        .dashboard-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+        .dashboard-header h2 { display: flex; align-items: center; gap: 9px; font-size: 18px; }
+        .dashboard-header p { margin-top: 3px; color: var(--text-muted); font-size: 11px; }
+        .dashboard-sheet { max-width: 45%; padding: 6px 10px; overflow: hidden; border: 1px solid var(--border-glass); border-radius: 999px; background: rgba(255,255,255,.04); color: #bfdbfe; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+        .dashboard-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+        .dashboard-card { min-width: 0; padding: 15px; border: 1px solid var(--border-glass); border-radius: 14px; background: rgba(30,41,59,.62); box-shadow: 0 12px 28px rgba(0,0,0,.14); }
+        .dashboard-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--text-muted); font-size: 11px; }
+        .dashboard-card-icon { width: 30px; height: 30px; flex: 0 0 30px; display: grid; place-items: center; border-radius: 9px; background: rgba(59,130,246,.13); color: #93c5fd; font-size: 17px; }
+        .dashboard-card-value { display: block; margin-top: 10px; overflow: hidden; color: var(--text-main); font-size: clamp(17px, 2vw, 23px); line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
+        .dashboard-card-note { display: block; margin-top: 5px; overflow: hidden; color: var(--text-muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+        .dashboard-target { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: end; margin-top: 12px; padding: 16px; border: 1px solid rgba(16,185,129,.28); border-radius: 14px; background: linear-gradient(135deg, rgba(16,185,129,.09), rgba(59,130,246,.06)); }
+        .target-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; font-size: 12px; font-weight: 600; }
+        .target-progress { height: 9px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.08); }
+        .target-progress-bar { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--accent), #34d399); transition: width .35s ease; }
+        .target-progress-detail { display: flex; justify-content: space-between; gap: 10px; margin-top: 7px; color: var(--text-muted); font-size: 10px; }
+        .target-editor { display: flex; align-items: stretch; gap: 8px; }
+        .target-editor input { width: 170px; padding: 9px 10px; border: 1px solid var(--border-glass); border-radius: 9px; background: rgba(0,0,0,.28); color: white; font-size: 12px; }
+        .target-editor button { padding: 9px 12px; border: 0; border-radius: 9px; background: var(--accent); color: white; font-size: 11px; font-weight: 700; cursor: pointer; }
+        .target-editor button:hover { background: var(--accent-hover); }
+        .invoice-workspace, .spk-workspace { padding: 40px; display: flex; flex-direction: column; align-items: center; }
+        .spk-workspace { display: none; }
+
+        .btn-action { background: var(--accent); color: white; border: none; padding: 14px 20px; border-radius: 12px; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 15px var(--accent-glow); display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; }
+        .btn-action:hover { transform: translateY(-2px); filter: brightness(1.1); }
+        .btn-danger { background: var(--danger); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); }
+        .btn-secondary { background: #64748b; box-shadow: 0 4px 15px rgba(100, 116, 139, 0.3); }
+
+        /* --- KERTAS INVOICE (STRUK NORMAL) --- */
+        .paper-invoice { background: var(--paper-bg); color: var(--paper-text); width: 100%; max-width: 148mm; min-height: 210mm; padding: 40px; border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;}
+
+        /* Dekorasi Kertas */
+        .paper-invoice::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 6px; background: linear-gradient(90deg, var(--accent), var(--primary)); }
+
+        .watermark { position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%) rotate(-25deg); font-size: 48px; font-weight: 800; padding: 10px 24px; border-radius: 16px; pointer-events: none; z-index: 1; opacity: 0.1; border: 6px solid; text-align: center; line-height: 1.2; letter-spacing: 2px;}
+        .watermark-paid { color: var(--accent); border-color: var(--accent); }
+        .watermark-partial { color: var(--warning); border-color: var(--warning); }
+        .watermark-unpaid { color: var(--danger); border-color: var(--danger); }
+
+        .inv-head { text-align: center; border-bottom: 2px solid var(--paper-border); padding-bottom: 20px; margin-bottom: 24px; position: relative; z-index: 2;}
+        .inv-head h1 { font-size: 20px; font-weight: 800; letter-spacing: 1px; color: var(--paper-text);}
+        .inv-head p { font-size: 12px; color: #64748b; margin-top: 4px; font-weight: 500;}
+
+        .inv-box { background: #f8fafc; padding: 16px; border-radius: 10px; border: 1px solid var(--paper-border); margin-bottom: 20px; font-size: 13px; position: relative; z-index: 2;}
+        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 13px; position: relative; z-index: 2;}
+        .data-table th { text-align: left; border-bottom: 2px solid var(--paper-border); padding: 10px 0; color: #64748b; font-weight: 600;}
+        .data-table td { padding: 12px 0; border-bottom: 1px dashed var(--paper-border); }
+        .text-right { text-align: right; }
+
+        .total-zone { display: flex; justify-content: space-between; align-items: center; background: var(--paper-text); color: white; padding: 16px 20px; border-radius: 10px 10px 0 0; margin-top: 15px; position: relative; z-index: 2;}
+        .total-zone .label { font-size: 14px; font-weight: 600; }
+        .total-zone .amount { font-size: 20px; font-weight: 800; }
+
+        .payment-calc-zone { background: #f8fafc; border: 1px solid var(--paper-border); border-top: none; padding: 16px 20px; border-radius: 0 0 10px 10px; font-size: 14px; position: relative; z-index: 2;}
+        .calc-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
+
+        /* --- STRUK KHUSUS THERMAL 58MM --- */
+        .thermal-preview-overlay { display: none; position: fixed; inset: 0; z-index: 500; padding: 18px; background: rgba(2, 6, 23, 0.94); backdrop-filter: blur(10px); }
+        .thermal-preview-overlay.show { display: flex; align-items: stretch; justify-content: center; }
+        .thermal-preview-shell { width: min(100%, 680px); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border-glass); border-radius: 18px; background: #0f172a; box-shadow: 0 24px 60px rgba(0,0,0,.55); }
+        .thermal-preview-toolbar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 14px; border-bottom: 1px solid var(--border-glass); }
+        .thermal-preview-toolbar strong { display: block; font-size: 14px; }
+        .thermal-preview-toolbar span { display: block; margin-top: 2px; color: var(--text-muted); font-size: 11px; }
+        .thermal-preview-close, .thermal-preview-print { min-height: 42px; border: 0; border-radius: 10px; color: #fff; cursor: pointer; }
+        .thermal-preview-close { width: 42px; background: rgba(255,255,255,.08); font-size: 18px; }
+        .thermal-preview-print { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 0 16px; background: var(--accent); font-size: 12px; font-weight: 800; }
+        .thermal-preview-close:hover { background: rgba(255,255,255,.14); }
+        .thermal-preview-print:hover { background: var(--accent-hover); }
+        .thermal-preview-stage { flex: 1; min-height: 0; overflow: auto; display: flex; align-items: flex-start; justify-content: center; padding: 26px 16px 46px; background: #cbd5e1; }
+        .thermal-preview-stage .thermal-receipt { display: block; flex: 0 0 58mm; box-shadow: 0 12px 30px rgba(15, 23, 42, .35); }
+        body.thermal-preview-open { overflow: hidden; }
+        .thermal-receipt { display: none; box-sizing: border-box; width: 58mm; padding: 4mm 2.3mm; background: #fff; color: #000; font-family: 'Courier New', Courier, monospace; font-size: 9pt; line-height: 1.18; overflow-wrap: anywhere; }
+        .thermal-receipt *, .thermal-receipt *::before, .thermal-receipt *::after { box-sizing: border-box; }
+        .thermal-top-feed { width: 100%; height: 8mm; }
+        .thermal-brand { text-align: center; }
+        .thermal-brand-name { font-size: 10.4pt; line-height: 1.05; font-weight: 800; text-transform: uppercase; }
+        .thermal-branch { margin-top: 0.4mm; font-size: 8pt; font-weight: 700; letter-spacing: 0.2px; }
+        .thermal-document-title { display: inline-block; margin-top: 0.8mm; padding: 0.35mm 1.3mm; border: 1px solid #000; font-size: 8.4pt; font-weight: 800; letter-spacing: 0.3px; }
+        .thermal-divider { width: 100%; margin: 1mm 0; border-top: 1px dashed #000; }
+        .thermal-meta-row { display: grid; grid-template-columns: 19mm minmax(0, 1fr); gap: 0.8mm; margin: 0.3mm 0; align-items: start; }
+        .thermal-meta-row > span:first-child { white-space: nowrap; font-size: 8.4pt; }
+        .thermal-meta-value { min-width: 0; text-align: right; font-weight: 700; overflow-wrap: anywhere; }
+        .thermal-cost-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .thermal-cost-table td { padding: 0.3mm 0; vertical-align: top; }
+        .thermal-cost-table td:first-child { width: 58%; padding-right: 1mm; }
+        .thermal-cost-table td:last-child { width: 42%; text-align: right; white-space: nowrap; font-weight: 700; }
+        .thermal-grand-total { display: flex; justify-content: space-between; align-items: baseline; gap: 2mm; margin-top: 0.5mm; padding: 0.8mm 0; border-top: 1.5px solid #000; border-bottom: 1.5px solid #000; font-weight: 900; }
+        .thermal-grand-total span:first-child { font-size: 9pt; }
+        .thermal-grand-total span:last-child { font-size: 11.3pt; white-space: nowrap; }
+        .thermal-payment { margin-top: 0.7mm; }
+        .thermal-payment .thermal-meta-row { margin: 0.35mm 0; }
+        .thermal-payment-final { margin-top: 0.5mm !important; padding-top: 0.5mm; border-top: 1px dashed #000; }
+        .thermal-status { margin: 0.9mm 0; padding: 0.5mm; border: 1.5px solid #000; text-align: center; font-size: 9.5pt; font-weight: 900; letter-spacing: 0.7px; }
+        .thermal-footer { padding-top: 0.7mm; border-top: 1px dashed #000; text-align: center; }
+        .thermal-note { margin-top: 0.35mm; text-align: center; font-size: 7.5pt; line-height: 1.18; }
+        .thermal-cashier { font-size: 8pt; }
+        .thermal-cashier strong { font-size: 8.2pt; }
+        .thermal-thanks { margin-top: 0.65mm; font-size: 8.3pt; font-weight: 800; }
+        .thermal-measure { display: block !important; position: fixed !important; left: -1000mm !important; top: 0 !important; visibility: hidden !important; pointer-events: none !important; }
+
+        @media (max-width: 560px) {
+            .thermal-preview-overlay { padding: 0; }
+            .thermal-preview-shell { width: 100%; border: 0; border-radius: 0; }
+            .thermal-preview-toolbar { padding: 10px; }
+            .thermal-preview-toolbar span { display: none; }
+            .thermal-preview-print { padding: 0 13px; }
+            .thermal-preview-stage { padding-top: 20px; }
+        }
+
+        /* --- KERTAS SPK --- */
+        .paper-spk { background: white; color: black; width: 100%; max-width: 215mm; min-height: 330mm; padding: 30px 40px; border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); font-family: 'Times New Roman', Times, serif; }
+        .spk-header { text-align: center; border-bottom: 3px double black; padding-bottom: 15px; margin-bottom: 20px; }
+        .spk-header h2 { font-size: 22px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
+        .spk-header h1 { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+        .spk-header p { font-size: 13px; margin: 0; font-weight: bold; }
+        .spk-content { font-size: 14px; line-height: 1.5; }
+        .spk-data-konsumen { margin: 15px 0; padding: 15px; border: 1px solid black; }
+        .spk-data-konsumen table { width: 100%; font-size: 14px; }
+        .spk-data-konsumen td { padding: 4px; vertical-align: top; }
+        .spk-rincian-table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 12px; }
+        .spk-rincian-table th, .spk-rincian-table td { border: 1px solid black; padding: 8px 6px; }
+        .spk-rincian-table th { background-color: #f1f5f9; text-align: center; -webkit-print-color-adjust: exact; }
+        .spk-ttd { display: flex; justify-content: space-between; margin-top: 40px; text-align: center; font-size: 14px; }
+        .spk-ttd-box { width: 30%; }
+        .spk-ttd-name { margin-top: 70px; font-weight: bold; text-decoration: underline; }
+
+        /* --- MODAL LAPORAN --- */
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(11, 17, 33, 0.8); backdrop-filter: blur(8px); animation: fadeIn 0.2s ease; }
+        .modal-content { background-color: #0f172a; border: 1px solid var(--border-glass); margin: 3% auto; padding: 32px; border-radius: 20px; width: 95%; max-width: 1100px; color: white; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.5);}
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-glass); padding-bottom: 20px; margin-bottom: 24px;}
+        .close { color: var(--text-muted); font-size: 32px; line-height: 1; font-weight: bold; cursor: pointer; transition: 0.2s; background: transparent; border: 0; padding: 4px 8px; border-radius: 8px; }
+        .close:hover { color: white; }
+        .report-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 24px;}
+        .report-table th, .report-table td { padding: 14px; text-align: left; border-bottom: 1px solid var(--border-glass); }
+        .report-table th { background: rgba(0,0,0,0.2); color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;}
+        .btn-export { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid var(--danger); padding: 10px 16px; border-radius: 10px; cursor: pointer; font-family: 'Poppins'; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: 0.2s;}
+        .btn-export:hover { background: var(--danger); color: white; }
+        .btn-excel { background: var(--accent-glow); color: var(--accent); border: 1px solid var(--accent); padding: 10px 16px; border-radius: 10px; cursor: pointer; font-family: 'Poppins'; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: 0.2s;}
+        .btn-excel:hover { background: var(--accent); color: white;}
+        .status-badge { padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; letter-spacing: 0.5px;}
+        .status-lunas { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);}
+        .status-sebagian { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3);}
+        .status-batal { background: rgba(100, 116, 139, 0.18); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.35); text-decoration: line-through; }
+        .report-summary { display: flex; justify-content: flex-end; gap: 30px; background: rgba(0,0,0,0.2); padding: 24px; border-radius: 16px; border: 1px solid var(--border-glass);}
+        .summary-box { text-align: right; }
+        .summary-box div { font-size: 13px; color: var(--text-muted); margin-bottom: 4px; font-weight: 500;}
+        .summary-box strong { font-size: 22px; color: var(--text-main); font-weight: 700;}
+        .report-filter { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-glass); }
+        .report-filter label { color: var(--text-muted); font-size: 12px; }
+        .report-filter input { color: white; color-scheme: dark; background: transparent; border: 0; outline: 0; }
+
+        /* --- TOAST NOTIFICATION --- */
+        .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 12px; max-width: calc(100vw - 32px); }
+        .toast { display: flex; align-items: center; gap: 14px; padding: 16px 20px; border-radius: 12px; background: #0f172a; color: white; box-shadow: 0 10px 30px rgba(0,0,0,0.4); transform: translateX(120%); transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55); border: 1px solid var(--border-glass); min-width: 300px; font-size: 14px;}
+        .toast.show { transform: translateX(0); }
+        .toast-icon { font-size: 24px; }
+        .toast.success .toast-icon { color: var(--accent); }
+        .toast.error .toast-icon { color: var(--danger); }
+        .toast.warning .toast-icon { color: var(--warning); }
+        .toast-content { flex: 1; }
+        .toast-title { font-weight: 600; margin-bottom: 2px; }
+        .toast-msg { color: var(--text-muted); font-size: 12px; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        @media (max-width: 1100px) {
+            .dashboard-grid { grid-template-columns: 1fr 1fr; }
+            .dashboard-target { grid-template-columns: 1fr; align-items: stretch; }
+            .target-editor input { width: 100%; min-width: 0; }
+        }
+
+        /* TAMPILAN MOBILE */
+        @media (max-width: 768px) {
+            body { flex-direction: column; overflow-y: auto; }
+            .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--border-glass); }
+            .tools-area { max-height: none; overflow-y: visible; }
+            .list-container { max-height: 400px; }
+            .main-area { overflow-y: visible; }
+            .dashboard-panel { width: calc(100% - 30px); margin-top: 20px; }
+            .dashboard-grid { grid-template-columns: 1fr 1fr; }
+            .dashboard-target { grid-template-columns: 1fr; align-items: stretch; }
+            .target-editor input { width: 100%; min-width: 0; }
+            .target-editor button { flex: 0 0 auto; }
+            .invoice-workspace, .spk-workspace { padding: 20px 15px; }
+            .paper-invoice, .paper-spk { padding: 24px; min-height: auto; }
+            .report-summary { flex-direction: column; text-align: left; align-items: flex-start;}
+            .summary-box { text-align: left; }
+            .modal-action-btns { flex-direction: column; width: 100%;}
+            .btn-export, .btn-excel { width: 100%; justify-content: center; }
+            .toast-container { left: 16px; right: 16px; bottom: 16px; }
+            .toast { width: 100%; min-width: 0; }
+
+            input, select, textarea, .search-box { font-size: 16px !important; }
+        }
+
+        @media (max-width: 420px) {
+            .dashboard-grid { grid-template-columns: 1fr; }
+            .dashboard-header { align-items: flex-start; }
+            .dashboard-sheet { max-width: 50%; }
+        }
+
+        @page { size: A4 portrait; margin: 10mm; }
+        @page thermalReceipt { size: 58mm 120mm; margin: 0; }
+        @page spkF4 { size: 215mm 330mm; margin: 10mm 15mm; }
+
+        /* ATURAN UMUM CETAK PRINTER */
+        @media print {
+            .sidebar, .file-upload-wrapper, .sheet-selector-wrapper, .modal, .no-print, .toast-container { display: none !important; }
+            body:not(.mode-cetak-thermal) .thermal-preview-overlay { display: none !important; }
+            body { background: white !important; display: block; overflow: visible; height: auto; margin: 0; }
+            .main-area { display: block; overflow: visible; padding: 0; margin: 0; }
+
+            /* -- CETAK STRUK REGULER (A4/Biasa) -- */
+            body:not(.mode-cetak-spk):not(.mode-cetak-thermal) .invoice-workspace { padding: 0; display: block; }
+            body:not(.mode-cetak-spk):not(.mode-cetak-thermal) .paper-invoice { box-shadow: none; border-radius: 0; width: 100%; max-width: 100%; padding: 0; height: auto; color: #000;}
+            body:not(.mode-cetak-spk):not(.mode-cetak-thermal) .total-zone { background: #f1f5f9; color: #000; border: 2px solid #000; -webkit-print-color-adjust: exact; border-radius: 0;}
+            body:not(.mode-cetak-spk):not(.mode-cetak-thermal) .watermark { -webkit-print-color-adjust: exact; opacity: 0.15; border-color: #000 !important; color: #000 !important;}
+            body:not(.mode-cetak-spk):not(.mode-cetak-thermal) .paper-invoice::before { display: none; }
+            body:not(.mode-cetak-spk):not(.mode-cetak-thermal) .spk-workspace { display: none !important; }
+
+            /* -- CETAK STRUK THERMAL 58MM -- */
+            body.mode-cetak-thermal { width: 58mm !important; min-width: 58mm !important; overflow: visible !important; background: white !important; }
+            body.mode-cetak-thermal .main-area { display: none !important; }
+            body.mode-cetak-thermal .thermal-preview-overlay { display: block !important; position: static !important; inset: auto !important; width: 58mm !important; height: auto !important; padding: 0 !important; background: transparent !important; backdrop-filter: none !important; }
+            body.mode-cetak-thermal .thermal-preview-shell { display: block !important; width: 58mm !important; overflow: visible !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
+            body.mode-cetak-thermal .thermal-preview-stage { display: block !important; width: 58mm !important; overflow: visible !important; padding: 0 !important; background: transparent !important; }
+            body.mode-cetak-thermal .thermal-receipt { display: block !important; page: thermalReceipt; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+            body.mode-cetak-thermal .thermal-preview-stage .thermal-receipt { box-shadow: none !important; }
+
+            /* -- CETAK SPK (F4) -- */
+            body.mode-cetak-spk { overflow: visible !important; height: auto !important; }
+            body.mode-cetak-spk .invoice-workspace { display: none !important; }
+            body.mode-cetak-spk .spk-workspace { padding: 0; display: block !important; height: 100% !important; }
+            body.mode-cetak-spk .paper-spk {
+                box-shadow: none; border-radius: 0; width: 100%; max-width: 100%; padding: 0; height: 100%; min-height: 0 !important;
+                max-height: 300mm; page-break-inside: avoid; break-inside: avoid; page: spkF4;
+            }
+            body.mode-cetak-spk .spk-header { padding-bottom: 5px; margin-bottom: 10px; }
+            body.mode-cetak-spk .spk-header h2 { font-size: 16px !important; margin-bottom: 2px; }
+            body.mode-cetak-spk .spk-header h1 { font-size: 14px !important; margin-bottom: 2px; }
+            body.mode-cetak-spk .spk-header p { font-size: 11px !important; }
+            body.mode-cetak-spk .spk-content { font-size: 12px !important; line-height: 1.3 !important; }
+            body.mode-cetak-spk .spk-data-konsumen { margin: 8px 0 !important; padding: 10px !important; }
+            body.mode-cetak-spk .spk-data-konsumen table { font-size: 12px !important; }
+            body.mode-cetak-spk .spk-rincian-table { margin: 10px 0 !important; font-size: 11px !important; }
+            body.mode-cetak-spk .spk-rincian-table th, body.mode-cetak-spk .spk-rincian-table td { padding: 4px 4px !important; }
+            body.mode-cetak-spk .spk-ttd { margin-top: 20px !important; font-size: 12px !important; }
+            body.mode-cetak-spk .spk-ttd-name { margin-top: 45px !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="toast-container" id="toastContainer" role="status" aria-live="polite" aria-atomic="true"></div>
+
+    <div class="thermal-preview-overlay" id="thermalPreviewModal" role="dialog" aria-modal="true" aria-labelledby="thermalPreviewTitle">
+        <div class="thermal-preview-shell">
+            <div class="thermal-preview-toolbar no-print">
+                <button type="button" class="thermal-preview-close" onclick="tutupPreviewThermal()" aria-label="Tutup pratinjau thermal">
+                    <i class="ph-bold ph-arrow-left" aria-hidden="true"></i>
+                </button>
+                <div>
+                    <strong id="thermalPreviewTitle">Pratinjau Thermal 58 mm</strong>
+                    <span>Tampilan ini sama dengan hasil cetak.</span>
+                </div>
+                <button type="button" class="thermal-preview-print" id="thermalPreviewPrintButton" onclick="cetakDariPreviewThermal()">
+                    <i class="ph-bold ph-printer" aria-hidden="true"></i> CETAK
+                </button>
+            </div>
+            <div class="thermal-preview-stage" id="thermalPreviewHost"></div>
+        </div>
+    </div>
+
+    <div id="laporanModal" class="modal no-print" role="dialog" aria-modal="true" aria-labelledby="judulLaporan">
+        <div class="modal-content" tabindex="-1">
+            <div class="modal-header">
+                <h2 id="judulLaporan" style="display:flex; align-items:center; gap:10px;"><i class="ph-fill ph-book-bookmark" style="color:var(--accent);"></i> Laporan Kasir Harian</h2>
+                <button type="button" class="close" onclick="tutupLaporan()" aria-label="Tutup laporan">&times;</button>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; align-items: center;">
+                <div>
+                    <p style="color: var(--text-muted); font-size: 14px; max-width: 480px; margin-bottom:10px;">Transaksi tersimpan otomatis di perangkat. Pilih tanggal untuk membuka rekap harian.</p>
+                    <div class="report-filter">
+                        <label for="reportDate">Tanggal laporan</label>
+                        <input type="date" id="reportDate" onchange="renderTabelLaporan()">
+                    </div>
+                </div>
+                <div class="modal-action-btns" style="display: flex; gap: 12px;">
+                    <button type="button" class="btn-excel" onclick="exportKeExcel()"><i class="ph ph-file-xls" style="font-size:18px;"></i> Rekap Excel</button>
+                    <button type="button" class="btn-export" onclick="exportPDF()"><i class="ph ph-file-pdf" style="font-size:18px;"></i> Rekap PDF</button>
+                </div>
+            </div>
+
+            <div style="overflow-x: auto;">
+                <table class="report-table" id="tabelLaporanHTML">
+                    <thead>
+                        <tr>
+                            <th>Waktu Bayar</th>
+                            <th>Nama Pelanggan</th>
+                            <th>Periode Dibayar</th>
+                            <th>Total Tagihan</th>
+                            <th>Uang Diterima</th>
+                            <th>Kembalian</th>
+                            <th>Status</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bodyLaporan"></tbody>
+                </table>
+            </div>
+
+            <div class="report-summary">
+                <div class="summary-box">
+                    <div>Total Nilai Tagihan Dipilih</div>
+                    <strong id="htmlTotalTagihan">Rp 0</strong>
+                </div>
+                <div class="summary-box">
+                    <div>Total Uang Diterima <i class="ph-fill ph-check-circle" style="color:var(--accent);"></i></div>
+                    <strong id="htmlTotalUangMasuk" style="color: var(--accent);">Rp 0</strong>
+                </div>
+                <div class="summary-box">
+                    <div>Total Kembalian</div>
+                    <strong id="htmlTotalKembalian">Rp 0</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <aside class="sidebar no-print">
+        <div class="brand-header">
+            <div class="brand-icon"><i class="ph-fill ph-drop"></i></div>
+            Perumda Air Minum Tirta Jaya Mandiri
+        </div>
+
+        <div class="tools-area">
+            <div class="file-upload-wrapper">
+                <input type="file" id="dataFile" accept=".xlsx, .xls, .csv" aria-label="Unggah data master Excel atau CSV">
+                <div class="file-upload-text"><i class="ph-bold ph-upload-simple"></i> Unggah Data Master</div>
+            </div>
+
+            <div class="cache-status" id="cacheStatus" aria-live="polite"></div>
+
+            <div class="sheet-selector-wrapper" id="sheetSelectorWrapper">
+                <label for="sheetSelector"><i class="ph ph-table"></i> Pilih Sheet Aktif:</label>
+                <select id="sheetSelector" onchange="gantiSheet()"></select>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button type="button" class="btn-action-sm btn-gray" onclick="bukaLaporan()">
+                    <i class="ph ph-receipt"></i> Laporan
+                </button>
+                <button type="button" class="btn-action-sm btn-blue" onclick="exportDataTerupdate()">
+                    <i class="ph ph-download-simple"></i> Sisa Data
+                </button>
+            </div>
+
+            <div class="search-container">
+                <i class="ph ph-magnifying-glass"></i>
+                <label for="searchInput" class="sr-only">Cari pelanggan</label>
+                <input type="search" id="searchInput" class="search-box" placeholder="Ketik nama, ID, atau periode..." oninput="applyBillFilters()" autocomplete="off">
+            </div>
+
+            <details class="bill-filter-panel" id="billFilterPanel">
+                <summary>
+                    <span class="filter-summary-label"><i class="ph ph-funnel"></i> Filter Tagihan</span>
+                    <span class="filter-result-count" id="filterResultCount">0 data</span>
+                </summary>
+                <div class="bill-filter-content">
+                    <div class="bill-filter-grid">
+                        <div class="filter-field">
+                            <label for="filterTariff">Tarif</label>
+                            <select id="filterTariff" onchange="applyBillFilters()">
+                                <option value="">Semua tarif</option>
+                            </select>
+                        </div>
+                        <div class="filter-field">
+                            <label for="filterPeriod">Periode</label>
+                            <select id="filterPeriod" onchange="applyBillFilters()">
+                                <option value="">Semua periode</option>
+                            </select>
+                        </div>
+                        <div class="filter-field">
+                            <label for="filterMonths">Jumlah bulan</label>
+                            <select id="filterMonths" onchange="applyBillFilters()">
+                                <option value="0">Semua</option>
+                                <option value="2">Minimal 2 bulan</option>
+                                <option value="3">Minimal 3 bulan</option>
+                                <option value="6">Minimal 6 bulan</option>
+                            </select>
+                        </div>
+                        <div class="filter-field">
+                            <label for="filterAmount">Nominal</label>
+                            <select id="filterAmount" onchange="applyBillFilters()">
+                                <option value="">Semua nominal</option>
+                                <option value="0:99999">Di bawah Rp100 ribu</option>
+                                <option value="100000:499999">Rp100–499 ribu</option>
+                                <option value="500000:999999">Rp500–999 ribu</option>
+                                <option value="1000000:">Rp1 juta ke atas</option>
+                            </select>
+                        </div>
+                        <div class="filter-field" style="grid-column: 1 / -1;">
+                            <label for="filterSort">Urutkan</label>
+                            <select id="filterSort" onchange="applyBillFilters()">
+                                <option value="default">Urutan data</option>
+                                <option value="amount-desc">Nominal terbesar</option>
+                                <option value="amount-asc">Nominal terkecil</option>
+                                <option value="months-desc">Bulan terbanyak</option>
+                                <option value="name-asc">Nama A–Z</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="button" class="filter-reset" onclick="resetBillFilters()">
+                        <i class="ph ph-arrow-counter-clockwise"></i> Reset Filter
+                    </button>
+                </div>
+            </details>
+
+            <div class="control-panel" id="panelKontrol">
+                <label><i class="ph ph-calendar-check"></i> Pilih Bulan Pembayaran:</label>
+                <div class="periode-selector" id="periodeSelector"></div>
+
+                <label for="inputBayar" style="margin-top: 15px;"><i class="ph ph-money"></i> Uang Diserahkan Pelanggan (Rp)</label>
+                <div class="search-container">
+                    <input type="number" id="inputBayar" class="search-box" style="padding-left:14px; font-size: 18px; font-weight: 700; background: rgba(0,0,0,0.4); border-color: var(--primary);" placeholder="0" min="0" step="1" inputmode="numeric" oninput="hitungPembayaran()">
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 12px;">
+                    <button type="button" class="btn-action-sm btn-gray" style="flex:1;" onclick="bayarPas()"><i class="ph-bold ph-lightning"></i> Pas</button>
+                    <button type="button" class="btn-simpan" style="flex:2.5;" onclick="simpanTransaksi()"><i class="ph-bold ph-floppy-disk"></i> Simpan Transaksi</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="list-container" id="resultList">
+            <div style="text-align:center; margin-top: 40px; color: var(--text-muted); display:flex; flex-direction:column; align-items:center; gap:10px;">
+                <i class="ph ph-folder-open" style="font-size: 40px; opacity: 0.5;"></i>
+                <span style="font-size: 13px;">Belum ada data Excel/CSV yang dimuat.</span>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-area">
+        <section class="dashboard-panel no-print" id="dashboardPanel" aria-labelledby="dashboardTitle">
+            <div class="dashboard-header">
+                <div>
+                    <h2 id="dashboardTitle"><i class="ph-fill ph-chart-donut" style="color:var(--accent);"></i> Dashboard Tagihan</h2>
+                    <p>Ringkasan otomatis dari sheet aktif.</p>
+                </div>
+                <span class="dashboard-sheet" id="dashboardSheet">Belum ada sheet</span>
+            </div>
+
+            <div class="dashboard-grid">
+                <article class="dashboard-card">
+                    <div class="dashboard-card-head"><span>Pelanggan</span><span class="dashboard-card-icon"><i class="ph ph-users-three"></i></span></div>
+                    <strong class="dashboard-card-value" id="dashboardCustomers">0</strong>
+                    <span class="dashboard-card-note" id="dashboardCustomersNote">Belum ada data</span>
+                </article>
+                <article class="dashboard-card">
+                    <div class="dashboard-card-head"><span>Periode Tagihan</span><span class="dashboard-card-icon"><i class="ph ph-calendar-dots"></i></span></div>
+                    <strong class="dashboard-card-value" id="dashboardPeriods">0</strong>
+                    <span class="dashboard-card-note">Total lembar tagihan tersisa</span>
+                </article>
+                <article class="dashboard-card">
+                    <div class="dashboard-card-head"><span>Sisa Tagihan</span><span class="dashboard-card-icon"><i class="ph ph-wallet"></i></span></div>
+                    <strong class="dashboard-card-value" id="dashboardOutstanding">Rp 0</strong>
+                    <span class="dashboard-card-note">Nominal belum dibayar</span>
+                </article>
+                <article class="dashboard-card">
+                    <div class="dashboard-card-head"><span>Terkumpul</span><span class="dashboard-card-icon"><i class="ph ph-trend-up"></i></span></div>
+                    <strong class="dashboard-card-value" id="dashboardCollected">Rp 0</strong>
+                    <span class="dashboard-card-note" id="dashboardToday">Hari ini: Rp 0</span>
+                </article>
+            </div>
+
+            <div class="dashboard-target">
+                <div>
+                    <div class="target-title-row">
+                        <span><i class="ph ph-target"></i> Target Penagihan</span>
+                        <strong id="targetProgressText">0%</strong>
+                    </div>
+                    <div class="target-progress" role="progressbar" id="targetProgress" aria-label="Progres target penagihan" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                        <div class="target-progress-bar" id="targetProgressBar"></div>
+                    </div>
+                    <div class="target-progress-detail">
+                        <span id="targetCollectedText">Terkumpul Rp 0</span>
+                        <span id="targetRemainingText">Sisa target Rp 0</span>
+                    </div>
+                </div>
+                <form class="target-editor" onsubmit="simpanTargetTagihan(event)">
+                    <label class="sr-only" for="targetInput">Target penagihan untuk sheet aktif</label>
+                    <input type="number" id="targetInput" min="0" step="1" inputmode="numeric" placeholder="Nominal target">
+                    <button type="submit"><i class="ph ph-floppy-disk"></i> Simpan Target</button>
+                </form>
+            </div>
+        </section>
+
+        <div class="invoice-workspace" id="invoiceArea">
+            <div style="display:flex; flex-wrap: wrap; justify-content: center; gap:10px; width:100%; max-width:148mm; margin-bottom:25px;" class="no-print">
+                <button type="button" class="btn-action btn-secondary" style="flex:1; min-width:120px;" onclick="printA4()">
+                    <i class="ph-bold ph-printer"></i> STRUK A4
+                </button>
+                <button type="button" class="btn-action" style="flex:1.5; min-width:150px;" onclick="printThermal()">
+                    <i class="ph-bold ph-receipt"></i> THERMAL 58MM
+                </button>
+                <button type="button" class="btn-action btn-danger" style="flex:1; min-width:120px;" onclick="tampilkanSPK()">
+                    <i class="ph-bold ph-warning-octagon"></i> CETAK SPK
+                </button>
+            </div>
+
+            <div class="paper-invoice">
+                <div id="watermarkStamp" class="watermark watermark-unpaid">BELUM BAYAR</div>
+
+                <div class="inv-head">
+                    <h1>PERUMDA AIR MINUM TIRTA JAYA MANDIRI</h1>
+                    <p>CABANG CITARIK</p>
+                </div>
+
+                <div class="inv-box">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                        <span style="color:#64748b; font-weight:600;">PELANGGAN:</span>
+                        <span style="color:#64748b; font-weight:600;">TARIF:</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-weight: 700; color:#0f172a; font-size: 15px;">
+                        <span id="billNama" style="max-width: 70%;">-</span>
+                        <span id="billTarif" style="color: var(--primary);">-</span>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; font-size: 12px; padding: 0 5px; margin-bottom: 20px;">
+                    <div><strong>Periode:</strong> <span id="billPeriode" style="color:var(--accent-hover); font-weight:700;">-</span></div>
+                    <div><strong>Tgl Cetak:</strong> <span id="billTglCetak">-</span></div>
+                </div>
+
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Rincian Biaya</th>
+                            <th class="text-right">Nominal (Rp)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Pemakaian Air</strong></td>
+                            <td class="text-right" id="billAir">0</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Beban Tetap</strong></td>
+                            <td class="text-right" id="billBeban">0</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Denda Keterlambatan</strong></td>
+                            <td class="text-right" id="billDenda">0</td>
+                        </tr>
+                        <tr id="billLainnyaRow" style="display:none;">
+                            <td><strong>Biaya Lainnya</strong></td>
+                            <td class="text-right" id="billLainnya">0</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="total-zone">
+                    <div class="label">TOTAL TAGIHAN</div>
+                    <div class="amount" id="billTotal">Rp 0</div>
+                </div>
+
+                <div class="payment-calc-zone">
+                    <div class="calc-row">
+                        <span style="color: #64748b; font-weight: 600;">Uang Diserahkan:</span>
+                        <strong id="billDibayar" style="font-size: 15px;">Rp 0</strong>
+                    </div>
+                    <div class="calc-row" id="diterimaContainer">
+                        <span style="color: #64748b; font-weight: 600;">Masuk ke Tagihan:</span>
+                        <strong id="billDiterima" style="font-size: 15px;">Rp 0</strong>
+                    </div>
+                    <div class="calc-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--paper-border);" id="sisaContainer">
+                        <span id="labelSisa" style="font-weight: 700;">Sisa Kekurangan:</span>
+                        <strong id="billSisa" style="font-size: 15px;">Rp 0</strong>
+                    </div>
+                </div>
+
+                <div style="margin-top: 50px; display: flex; justify-content: space-between; font-size: 11px; color: #64748b;">
+                    <div style="line-height: 1.6;">* Bukti pembayaran sah.<br>* Struk hanya mencetak periode dibayar.</div>
+                    <div style="text-align: center;">Petugas Kasir<br><br><br><br>( Maidi Sujana P )</div>
+                </div>
+            </div>
+
+            <section class="thermal-receipt" id="thermalReceipt" aria-label="Struk thermal 58 milimeter">
+                <div class="thermal-top-feed" aria-hidden="true"></div>
+                <header class="thermal-brand">
+                    <div class="thermal-brand-name">Perumda Air Minum<br>Tirta Jaya Mandiri</div>
+                    <div class="thermal-branch">CABANG CITARIK</div>
+                    <div class="thermal-document-title" id="thermalDocumentTitle">RINCIAN TAGIHAN</div>
+                </header>
+
+                <div class="thermal-divider"></div>
+                <div class="thermal-meta-row">
+                    <span>No</span>
+                    <span class="thermal-meta-value" id="thermalReceiptNumber">-</span>
+                </div>
+                <div class="thermal-meta-row">
+                    <span>Tgl</span>
+                    <span class="thermal-meta-value" id="thermalDate">-</span>
+                </div>
+
+                <div class="thermal-divider"></div>
+                <div class="thermal-meta-row">
+                    <span>Nama</span>
+                    <span class="thermal-meta-value" id="thermalCustomerName">-</span>
+                </div>
+                <div class="thermal-meta-row" id="thermalCustomerIdRow">
+                    <span>ID</span>
+                    <span class="thermal-meta-value" id="thermalCustomerId">-</span>
+                </div>
+                <div class="thermal-meta-row">
+                    <span>Tarif</span>
+                    <span class="thermal-meta-value" id="thermalTariff">-</span>
+                </div>
+                <div class="thermal-meta-row">
+                    <span>Periode</span>
+                    <span class="thermal-meta-value" id="thermalPeriod">-</span>
+                </div>
+
+                <div class="thermal-divider"></div>
+                <table class="thermal-cost-table">
+                    <tbody>
+                        <tr><td>Air</td><td id="thermalAir">Rp 0</td></tr>
+                        <tr><td>Beban</td><td id="thermalBeban">Rp 0</td></tr>
+                        <tr><td>Denda</td><td id="thermalDenda">Rp 0</td></tr>
+                        <tr id="thermalOtherRow"><td>Lainnya</td><td id="thermalOther">Rp 0</td></tr>
+                    </tbody>
+                </table>
+
+                <div class="thermal-grand-total">
+                    <span>TOTAL</span>
+                    <span id="thermalTotal">Rp 0</span>
+                </div>
+
+                <div class="thermal-payment">
+                    <div class="thermal-meta-row" id="thermalTenderedRow">
+                        <span>Tunai</span>
+                        <span class="thermal-meta-value" id="thermalTendered">Rp 0</span>
+                    </div>
+                    <div class="thermal-meta-row thermal-payment-final" id="thermalBalanceRow">
+                        <span id="thermalBalanceLabel">Sisa</span>
+                        <span class="thermal-meta-value" id="thermalBalance">Rp 0</span>
+                    </div>
+                </div>
+
+                <div class="thermal-status" id="thermalStatus">BELUM BAYAR</div>
+                <div class="thermal-footer">
+                    <div class="thermal-cashier">Kasir: <strong>Maidi Sujana P</strong></div>
+                    <div class="thermal-thanks">TERIMA KASIH</div>
+                    <div class="thermal-note" id="thermalNote">Bukan bukti pembayaran.</div>
+                </div>
+            </section>
+        </div>
+
+        <div class="spk-workspace" id="spkArea">
+            <div style="display:flex; gap:15px; width:100%; max-width:215mm; margin-bottom:25px;" class="no-print">
+                <button type="button" class="btn-action" style="flex:1; background:var(--bg-glass-hover); border: 1px solid var(--border-glass);" onclick="tutupSPK()">
+                    <i class="ph-bold ph-arrow-left"></i> KEMBALI
+                </button>
+                <button type="button" class="btn-action btn-danger" style="flex:2;" onclick="printSPK()">
+                    <i class="ph-bold ph-printer"></i> PRINT SURAT SPK (F4)
+                </button>
+            </div>
+
+            <div class="paper-spk">
+                <div class="spk-header">
+                    <h2>PERUMDA AIR MINUM TIRTA JAYA MANDIRI</h2>
+                    <h1>SURAT PERINTAH KERJA (SPK)</h1>
+                    <p>TINDAKAN PENCABUTAN SEMENTARA SAMBUNGAN AIR</p>
+                </div>
+
+                <div class="spk-content">
+                    <div style="text-align: right; margin-bottom: 15px;">
+                        Tanggal Cetak: <span id="spkTanggalCetak">-</span>
+                    </div>
+
+                    <p style="text-align: justify;">Berdasarkan data administrasi sistem, pelanggan di bawah ini memiliki tunggakan pembayaran air yang telah melampaui batas toleransi yang ditentukan. Oleh karena itu, diperintahkan kepada petugas lapangan untuk melakukan <strong>TINDAKAN PENCABUTAN SEMENTARA</strong> terhadap sambungan air konsumen berikut:</p>
+
+                    <div class="spk-data-konsumen">
+                        <table>
+                            <tbody>
+                                <tr>
+                                    <td style="width: 160px; font-weight: bold;">Nama Konsumen</td>
+                                    <td style="width: 10px;">:</td>
+                                    <td id="spkNamaKonsumen" style="font-weight: bold; font-size: 16px;">-</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight: bold;">Kategori / Tarif</td>
+                                    <td>:</td>
+                                    <td id="spkTarifKonsumen">-</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight: bold;">Total Tunggakan</td>
+                                    <td>:</td>
+                                    <td><span id="spkJumlahBulan" style="font-weight: bold; color: #dc2626; font-size: 15px;">0</span> Bulan</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <p style="margin-bottom: 8px; font-weight: bold;">Rincian Tagihan Tertunggak:</p>
+                    <table class="spk-rincian-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 5%;">No.</th>
+                                <th style="width: 25%;">Periode Bulan</th>
+                                <th style="width: 15%;">Biaya Air</th>
+                                <th style="width: 15%;">Beban Tetap</th>
+                                <th style="width: 13%;">Denda</th>
+                                <th style="width: 12%;">Lainnya</th>
+                                <th style="width: 15%;">Total Tagihan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="spkBodyTable">
+                            </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="6" style="text-align: right; font-weight: bold; font-size: 13px; padding-right:10px;">TOTAL KESELURUHAN TUNGGAKAN :</td>
+                                <td style="text-align: right; font-weight: bold; font-size: 15px;" id="spkGrandTotal">Rp 0</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+
+                    <p style="text-align: justify; margin-top: 15px;">Demikian Surat Perintah Kerja ini diterbitkan agar dapat dilaksanakan dengan penuh tanggung jawab. Apabila konsumen telah melunasi seluruh tunggakan kepada petugas yang membawa surat ini, maka tindakan pencabutan dapat <strong>ditangguhkan</strong>.</p>
+
+                    <div class="spk-ttd">
+                        <div class="spk-ttd-box">
+                            <div>Mengetahui / Menyetujui,<br><strong>Kepala Cabang</strong></div>
+                            <div class="spk-ttd-name">_____________________</div>
+                        </div>
+                        <div class="spk-ttd-box">
+                            <div>Tanda Terima,<br><strong>Konsumen</strong></div>
+                            <div class="spk-ttd-name">_____________________</div>
+                        </div>
+                        <div class="spk-ttd-box">
+                            <div>Pelaksana Lapangan,<br><strong>Petugas</strong></div>
+                            <div class="spk-ttd-name">_____________________</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+<script>
+'use strict';
+
+const APP_SCHEMA_VERSION = 3;
+const CACHE_DB_NAME = 'tirta-jaya-billing-db';
+const CACHE_DB_VERSION = 1;
+const CACHE_STORE_NAME = 'app-state';
+const CACHE_RECORD_KEY = 'billing-state-v3';
+const LOCAL_CACHE_KEY = 'tirtaJayaBillingStateV3';
+const LEGACY_HISTORY_KEY = 'riwayatBayarAir';
+
+let databasePelanggan = [];
+let databasePerSheet = {};
+let currentPelanggan = null;
+let currentTotalTagihan = 0;
+let workbookName = '';
+let datasetId = '';
+let sheetOrder = [];
+let activeSheetName = '';
+let riwayatPembayaran = [];
+let collectionTargets = {};
+let lastReceipt = null;
+let printableInvoiceReady = false;
+let cacheDatabasePromise = null;
+let dependencyPromises = {};
+let modalPreviousFocus = null;
+let thermalPreviewPreviousFocus = null;
+
+const byId = (id) => document.getElementById(id);
+
+function escapeHTML(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function deepClone(value) {
+    if (typeof structuredClone === 'function') return structuredClone(value);
+    return JSON.parse(JSON.stringify(value));
+}
+
+function makeId(prefix = 'id') {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+        return `${prefix}-${window.crypto.randomUUID()}`;
+    }
+    return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function hashString(value) {
+    let hash = 2166136261;
+    const text = String(value);
+    for (let i = 0; i < text.length; i += 1) {
+        hash ^= text.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(36);
+}
+
+function roundMoney(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.round(number) : 0;
+}
+
+function parseCurrency(value) {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+    if (value === null || value === undefined) return 0;
+
+    let text = String(value).trim();
+    if (!text) return 0;
+
+    const isNegative = /^\s*\(.*\)\s*$/.test(text) || /^\s*-/.test(text);
+    text = text.replace(/[()]/g, '').replace(/[^0-9,.-]/g, '').replace(/-/g, '');
+    if (!text) return 0;
+
+    const comma = text.lastIndexOf(',');
+    const dot = text.lastIndexOf('.');
+
+    if (comma >= 0 && dot >= 0) {
+        const decimalSeparator = comma > dot ? ',' : '.';
+        const thousandsSeparator = decimalSeparator === ',' ? /\./g : /,/g;
+        text = text.replace(thousandsSeparator, '').replace(decimalSeparator, '.');
+    } else if (comma >= 0) {
+        const parts = text.split(',');
+        text = parts.length > 2 || (parts.length === 2 && parts[1].length === 3)
+            ? parts.join('')
+            : `${parts.shift()}.${parts.join('')}`;
+    } else if (dot >= 0) {
+        const parts = text.split('.');
+        text = parts.length > 2 || (parts.length === 2 && parts[1].length === 3)
+            ? parts.join('')
+            : `${parts.shift()}.${parts.join('')}`;
+    }
+
+    const parsed = Number.parseFloat(text);
+    if (!Number.isFinite(parsed)) return 0;
+    return isNegative ? -parsed : parsed;
+}
+
+function formatRupiah(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return '0';
+    return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(number);
+}
+
+function localDateKey(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function formatDateTime(value) {
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value || '-');
+    return date.toLocaleString('id-ID', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+    });
+}
+
+function formatLongDate(value = new Date()) {
+    const date = value instanceof Date ? value : new Date(`${value}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function refreshDocumentDates() {
+    const now = new Date();
+    byId('billTglCetak').innerText = now.toLocaleDateString('id-ID');
+    byId('spkTanggalCetak').innerText = formatLongDate(now);
+}
+
+function showToast(message, type = 'success') {
+    const container = byId('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+
+    const metadata = {
+        success: ['ph-check-circle', 'Berhasil'],
+        error: ['ph-x-circle', 'Gagal'],
+        warning: ['ph-warning', 'Perhatian']
+    }[type] || ['ph-info', 'Informasi'];
+
+    toast.innerHTML = `
+        <i class="ph-fill ${metadata[0]} toast-icon" aria-hidden="true"></i>
+        <div class="toast-content">
+            <div class="toast-title">${metadata[1]}</div>
+            <div class="toast-msg">${escapeHTML(message)}</div>
+        </div>
+    `;
+    container.appendChild(toast);
+    window.setTimeout(() => toast.classList.add('show'), 10);
+    window.setTimeout(() => {
+        toast.classList.remove('show');
+        window.setTimeout(() => toast.remove(), 400);
+    }, 4200);
+}
+
+function loadScriptCandidates(key, sources, predicate) {
+    if (predicate()) return Promise.resolve(true);
+    if (dependencyPromises[key]) return dependencyPromises[key];
+
+    dependencyPromises[key] = new Promise((resolve) => {
+        const trySource = (index) => {
+            if (predicate()) {
+                resolve(true);
+                return;
+            }
+            if (index >= sources.length) {
+                resolve(false);
+                return;
+            }
+
+            const script = document.createElement('script');
+            let settled = false;
+            const finish = (success) => {
+                if (settled) return;
+                settled = true;
+                window.clearTimeout(timeout);
+                if (!success) script.remove();
+                if (success && predicate()) resolve(true);
+                else trySource(index + 1);
+            };
+
+            script.src = sources[index];
+            script.async = true;
+            script.onload = () => finish(true);
+            script.onerror = () => finish(false);
+            const timeout = window.setTimeout(() => finish(false), 12000);
+            document.head.appendChild(script);
+        };
+        trySource(0);
+    });
+
+    return dependencyPromises[key];
+}
+
+async function ensureXLSX(showError = true) {
+    const ready = await loadScriptCandidates('xlsx', [
+        'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+        'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js'
+    ], () => typeof window.XLSX !== 'undefined');
+
+    if (!ready && showError) {
+        showToast('Modul Excel tidak dapat dimuat. Periksa koneksi internet, lalu coba lagi.', 'error');
+    }
+    return ready;
+}
+
+async function ensurePDFLibraries() {
+    const jsPDFReady = await loadScriptCandidates('jspdf', [
+        'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
+        'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js'
+    ], () => Boolean(window.jspdf && window.jspdf.jsPDF));
+
+    if (!jsPDFReady) {
+        showToast('Modul PDF tidak dapat dimuat. Periksa koneksi internet, lalu coba lagi.', 'error');
+        return false;
+    }
+
+    const autoTableReady = await loadScriptCandidates('autotable', [
+        'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js',
+        'https://unpkg.com/jspdf-autotable@3.5.28/dist/jspdf.plugin.autotable.min.js'
+    ], () => Boolean(window.jspdf.jsPDF.API && window.jspdf.jsPDF.API.autoTable));
+
+    if (!autoTableReady) {
+        showToast('Modul tabel PDF tidak dapat dimuat. Periksa koneksi internet, lalu coba lagi.', 'error');
+    }
+    return autoTableReady;
+}
+
+function openCacheDatabase() {
+    if (cacheDatabasePromise) return cacheDatabasePromise;
+    cacheDatabasePromise = new Promise((resolve, reject) => {
+        if (!('indexedDB' in window)) {
+            reject(new Error('IndexedDB tidak tersedia'));
+            return;
+        }
+
+        const request = indexedDB.open(CACHE_DB_NAME, CACHE_DB_VERSION);
+        request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(CACHE_STORE_NAME)) {
+                db.createObjectStore(CACHE_STORE_NAME);
+            }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error || new Error('Gagal membuka cache'));
+        request.onblocked = () => reject(new Error('Cache sedang digunakan tab lain'));
+    });
+    return cacheDatabasePromise;
+}
+
+async function readIndexedCache() {
+    const db = await openCacheDatabase();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(CACHE_STORE_NAME, 'readonly');
+        const request = transaction.objectStore(CACHE_STORE_NAME).get(CACHE_RECORD_KEY);
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => reject(request.error || new Error('Gagal membaca cache'));
+    });
+}
+
+async function writeIndexedCache(state) {
+    const db = await openCacheDatabase();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(CACHE_STORE_NAME, 'readwrite');
+        transaction.objectStore(CACHE_STORE_NAME).put(state, CACHE_RECORD_KEY);
+        transaction.oncomplete = () => resolve(true);
+        transaction.onerror = () => reject(transaction.error || new Error('Gagal menulis cache'));
+        transaction.onabort = () => reject(transaction.error || new Error('Penyimpanan cache dibatalkan'));
+    });
+}
+
+function buildPersistedState() {
+    return {
+        schemaVersion: APP_SCHEMA_VERSION,
+        datasetId,
+        workbookName,
+        sheetOrder,
+        activeSheetName,
+        sheets: databasePerSheet,
+        history: riwayatPembayaran,
+        collectionTargets,
+        lastReceipt,
+        savedAt: new Date().toISOString()
+    };
+}
+
+function updateCacheStatus(savedAt, backend = 'perangkat') {
+    const element = byId('cacheStatus');
+    if (!sheetOrder.length) {
+        element.style.display = 'none';
+        element.replaceChildren();
+        return;
+    }
+
+    const title = document.createElement('strong');
+    title.textContent = workbookName || 'Data master tersimpan';
+    const detail = document.createElement('span');
+    detail.textContent = `Tersimpan di ${backend} • ${formatDateTime(savedAt || new Date())}`;
+    element.replaceChildren(title, detail);
+    element.style.display = 'block';
+}
+
+async function persistState(quiet = false) {
+    const state = buildPersistedState();
+    try {
+        await writeIndexedCache(state);
+        updateCacheStatus(state.savedAt, 'cache perangkat');
+        return true;
+    } catch (indexedError) {
+        try {
+            localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(state));
+            updateCacheStatus(state.savedAt, 'penyimpanan browser');
+            return true;
+        } catch (storageError) {
+            console.error('Cache gagal:', indexedError, storageError);
+            if (!quiet) showToast('Perubahan berjalan, tetapi gagal disimpan ke cache perangkat.', 'error');
+            return false;
+        }
+    }
+}
+
+async function readPersistedState() {
+    try {
+        const indexedState = await readIndexedCache();
+        if (indexedState) return indexedState;
+    } catch (error) {
+        console.warn('IndexedDB tidak tersedia, mencoba localStorage:', error);
+    }
+
+    try {
+        const raw = localStorage.getItem(LOCAL_CACHE_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch (error) {
+        console.warn('Cache localStorage tidak dapat dibaca:', error);
+        return null;
+    }
+}
+
+function parseLegacyDate(value) {
+    if (!value) return null;
+    const direct = new Date(value);
+    if (!Number.isNaN(direct.getTime())) return direct;
+    const match = String(value).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,?\s+(\d{1,2})[.:](\d{2}))?/);
+    if (!match) return null;
+    return new Date(
+        Number(match[3]), Number(match[2]) - 1, Number(match[1]),
+        Number(match[4] || 0), Number(match[5] || 0)
+    );
+}
+
+function normalizeTransaction(transaction, index = 0) {
+    const legacyDate = parseLegacyDate(transaction.createdAt || transaction.tanggal);
+    const createdAt = legacyDate ? legacyDate.toISOString() : new Date().toISOString();
+    const uangMasuk = Math.max(0, roundMoney(transaction.uangMasuk));
+    const totalTagihan = Math.max(0, roundMoney(transaction.totalTagihan ?? transaction.tagihan));
+    const uangDiserahkan = Math.max(uangMasuk, roundMoney(transaction.uangDiserahkan ?? uangMasuk));
+    const voided = Boolean(transaction.voided || transaction.status === 'BATAL');
+    const requestedStatus = String(transaction.status || '').toUpperCase();
+    const safeStatus = ['LUNAS', 'SEBAGIAN'].includes(requestedStatus)
+        ? requestedStatus
+        : (uangMasuk >= totalTagihan ? 'LUNAS' : 'SEBAGIAN');
+    return {
+        ...transaction,
+        id: transaction.id || `legacy-${index}-${hashString(JSON.stringify(transaction))}`,
+        createdAt,
+        dateKey: transaction.dateKey || localDateKey(new Date(createdAt)),
+        tanggal: transaction.tanggal || formatDateTime(createdAt),
+        totalTagihan,
+        tagihan: totalTagihan,
+        uangMasuk,
+        uangDiserahkan,
+        kembalian: Math.max(0, roundMoney(transaction.kembalian ?? (uangDiserahkan - totalTagihan))),
+        sisa: Math.max(0, roundMoney(transaction.sisa ?? (totalTagihan - uangMasuk))),
+        voided,
+        status: voided ? 'BATAL' : safeStatus,
+        allocations: Array.isArray(transaction.allocations) ? transaction.allocations : []
+    };
+}
+
+function readLegacyHistory() {
+    try {
+        const raw = localStorage.getItem(LEGACY_HISTORY_KEY);
+        const data = raw ? JSON.parse(raw) : [];
+        return Array.isArray(data) ? data.map(normalizeTransaction) : [];
+    } catch (error) {
+        console.warn('Riwayat lama rusak dan diabaikan:', error);
+        return [];
+    }
+}
+
+function normalizeBill(bill, sheetName, customerKey, index) {
+    const air = roundMoney(bill.air);
+    const beban = roundMoney(bill.beban);
+    const denda = roundMoney(bill.denda);
+    const explicitTotal = roundMoney(bill.total);
+    const componentTotal = air + beban + denda;
+    const lainnya = bill.lainnya !== undefined
+        ? roundMoney(bill.lainnya)
+        : (explicitTotal ? explicitTotal - componentTotal : 0);
+    const total = explicitTotal || air + beban + denda + lainnya;
+    return {
+        ...bill,
+        id: bill.id || `bill-${hashString(`${sheetName}|${customerKey}|${bill.periode}|${bill.sourceRow ?? index}`)}`,
+        periode: String(bill.periode || '-'),
+        air,
+        beban,
+        denda,
+        lainnya,
+        total: Math.max(0, total),
+        originalTotal: Math.max(0, roundMoney(bill.originalTotal ?? total)),
+        paidTotal: Math.max(0, roundMoney(bill.paidTotal)),
+        sourceRow: Number.isFinite(Number(bill.sourceRow)) ? Number(bill.sourceRow) : index
+    };
+}
+
+function normalizeCustomer(customer, sheetName, index) {
+    const key = customer.key || `customer-${hashString(`${sheetName}|${customer.customerId || ''}|${customer.nama}|${customer.tarif}|${index}`)}`;
+    const listTagihan = (Array.isArray(customer.listTagihan) ? customer.listTagihan : [])
+        .map((bill, billIndex) => normalizeBill(bill, sheetName, key, billIndex))
+        .filter((bill) => bill.total > 0)
+        .sort((a, b) => a.sourceRow - b.sourceRow);
+    return {
+        ...customer,
+        key,
+        customerId: String(customer.customerId || ''),
+        nama: String(customer.nama || 'Tanpa Nama'),
+        tarif: String(customer.tarif || '-'),
+        listTagihan,
+        grandTotal: listTagihan.reduce((sum, bill) => sum + bill.total, 0),
+        sourceRow: Number.isFinite(Number(customer.sourceRow)) ? Number(customer.sourceRow) : index
+    };
+}
+
+function restoreState(state) {
+    if (!state || typeof state !== 'object' || !state.sheets || typeof state.sheets !== 'object') return false;
+
+    const restoredSheets = {};
+    Object.entries(state.sheets).forEach(([sheetName, customers]) => {
+        restoredSheets[sheetName] = (Array.isArray(customers) ? customers : [])
+            .map((customer, index) => normalizeCustomer(customer, sheetName, index))
+            .filter((customer) => customer.listTagihan.length > 0);
+    });
+
+    const restoredOrder = (Array.isArray(state.sheetOrder) ? state.sheetOrder : Object.keys(restoredSheets))
+        .filter((name, index, array) => restoredSheets[name] && array.indexOf(name) === index);
+    Object.keys(restoredSheets).forEach((name) => {
+        if (!restoredOrder.includes(name)) restoredOrder.push(name);
+    });
+    if (!restoredOrder.length) return false;
+
+    databasePerSheet = restoredSheets;
+    sheetOrder = restoredOrder;
+    workbookName = String(state.workbookName || 'Data tersimpan');
+    datasetId = String(state.datasetId || `dataset-${hashString(`${workbookName}|${state.savedAt || ''}`)}`);
+    activeSheetName = restoredSheets[state.activeSheetName] ? state.activeSheetName : restoredOrder[0];
+    riwayatPembayaran = Array.isArray(state.history)
+        ? state.history.map(normalizeTransaction)
+        : readLegacyHistory();
+    collectionTargets = {};
+    const savedTargets = state.collectionTargets && typeof state.collectionTargets === 'object'
+        ? state.collectionTargets
+        : {};
+    restoredOrder.forEach((sheetName) => {
+        const hasSavedTarget = Object.prototype.hasOwnProperty.call(savedTargets, sheetName);
+        const savedTarget = roundMoney(savedTargets[sheetName]);
+        const outstanding = restoredSheets[sheetName].reduce((sum, customer) => sum + customer.grandTotal, 0);
+        const collected = riwayatPembayaran
+            .filter((transaction) => !transaction.voided && transaction.datasetId === datasetId && transaction.sheet === sheetName)
+            .reduce((sum, transaction) => sum + transaction.uangMasuk, 0);
+        collectionTargets[sheetName] = hasSavedTarget && savedTarget >= 0
+            ? savedTarget
+            : outstanding + collected;
+    });
+    lastReceipt = state.lastReceipt ? normalizeTransaction(state.lastReceipt) : null;
+
+    populateSheetSelector();
+    activateSheet(activeSheetName, { persist: false, notify: false });
+    if (lastReceipt && !lastReceipt.voided) renderReceipt(lastReceipt);
+    updateCacheStatus(state.savedAt || new Date(), 'cache perangkat');
+    return true;
+}
+
+const HEADER_ALIASES = {
+    customerId: ['id pelanggan', 'nomor pelanggan', 'no pelanggan', 'nomor sambungan', 'no sambungan', 'no sl', 'nomor rekening', 'no rekening'],
+    nama: ['nama pelanggan', 'nama konsumen', 'nama', 'pelanggan', 'konsumen'],
+    tarif: ['tarif', 'golongan', 'kategori', 'jenis tarif'],
+    periode: ['periode', 'periode tagihan', 'bulan', 'bulan tagihan'],
+    air: ['harga air', 'biaya air', 'pemakaian air', 'rekening air', 'air'],
+    beban: ['beban tetap', 'biaya beban', 'abonemen', 'beban'],
+    denda: ['denda', 'denda keterlambatan'],
+    total: ['total', 'total tagihan', 'jumlah tagihan', 'grand total']
+};
+
+function normalizeHeader(value) {
+    return String(value ?? '')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function mapHeaderRow(row) {
+    const mapping = {};
+    row.forEach((cell, columnIndex) => {
+        const header = normalizeHeader(cell);
+        if (!header) return;
+        Object.entries(HEADER_ALIASES).some(([field, aliases]) => {
+            if (mapping[field] !== undefined) return false;
+            const matched = aliases.some((alias) => header === alias || header.startsWith(`${alias} `));
+            if (matched) mapping[field] = columnIndex;
+            return matched;
+        });
+    });
+    return mapping;
+}
+
+function findHeader(dataArray) {
+    let best = { rowIndex: -1, mapping: {}, score: 0 };
+    const limit = Math.min(dataArray.length, 25);
+    for (let rowIndex = 0; rowIndex < limit; rowIndex += 1) {
+        const row = Array.isArray(dataArray[rowIndex]) ? dataArray[rowIndex] : [];
+        const mapping = mapHeaderRow(row);
+        const score = Object.keys(mapping).length;
+        if (mapping.nama !== undefined && score > best.score) {
+            best = { rowIndex, mapping, score };
+        }
+    }
+    return best.score >= 3 ? best : null;
+}
+
+function formatPeriodValue(value) {
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return value.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+    }
+
+    if (typeof value === 'number' && value > 20000 && value < 80000 && window.XLSX && XLSX.SSF) {
+        const dateParts = XLSX.SSF.parse_date_code(value);
+        if (dateParts) {
+            const date = new Date(dateParts.y, dateParts.m - 1, dateParts.d || 1);
+            return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+        }
+    }
+    return String(value ?? '-').trim() || '-';
+}
+
+function makeCustomerKey(customerId, name, tariff) {
+    const normalizedId = normalizeHeader(customerId);
+    const identity = normalizedId
+        ? `id|${normalizedId}`
+        : `name|${normalizeHeader(name)}|tariff|${normalizeHeader(tariff)}`;
+    return `customer-${hashString(identity)}`;
+}
+
+function parseSheetData(dataArray, sheetName) {
+    const header = findHeader(dataArray);
+    const mapping = header ? header.mapping : {
+        sequence: 0, nama: 1, tarif: 2, periode: 3,
+        air: 4, beban: 5, denda: 6, total: 7
+    };
+    const startRow = header ? header.rowIndex + 1 : 1;
+    const grouped = new Map();
+    let skippedRows = 0;
+    let inconsistentRows = 0;
+
+    for (let rowIndex = startRow; rowIndex < dataArray.length; rowIndex += 1) {
+        const row = Array.isArray(dataArray[rowIndex]) ? dataArray[rowIndex] : [];
+        const rawName = mapping.nama !== undefined ? row[mapping.nama] : '';
+        const name = String(rawName ?? '').trim();
+        if (!name) {
+            if (row.some((cell) => String(cell ?? '').trim())) skippedRows += 1;
+            continue;
+        }
+
+        const customerId = mapping.customerId !== undefined ? String(row[mapping.customerId] ?? '').trim() : '';
+        const tariff = mapping.tarif !== undefined ? String(row[mapping.tarif] ?? '').trim() || '-' : '-';
+        const period = mapping.periode !== undefined ? formatPeriodValue(row[mapping.periode]) : '-';
+        const air = roundMoney(parseCurrency(mapping.air !== undefined ? row[mapping.air] : 0));
+        const beban = roundMoney(parseCurrency(mapping.beban !== undefined ? row[mapping.beban] : 0));
+        const denda = roundMoney(parseCurrency(mapping.denda !== undefined ? row[mapping.denda] : 0));
+        const componentTotal = air + beban + denda;
+        const rawTotal = mapping.total !== undefined ? roundMoney(parseCurrency(row[mapping.total])) : 0;
+        const total = rawTotal || componentTotal;
+        if (total <= 0) {
+            skippedRows += 1;
+            continue;
+        }
+
+        const lainnya = total - componentTotal;
+        if (rawTotal && rawTotal !== componentTotal) inconsistentRows += 1;
+        const customerKey = makeCustomerKey(customerId, name, tariff);
+        const bill = {
+            id: `bill-${hashString(`${sheetName}|${customerKey}|${period}|${rowIndex}`)}`,
+            periode: period,
+            air,
+            beban,
+            denda,
+            lainnya,
+            total,
+            originalTotal: total,
+            paidTotal: 0,
+            sourceRow: rowIndex
+        };
+
+        if (!grouped.has(customerKey)) {
+            grouped.set(customerKey, {
+                key: customerKey,
+                customerId,
+                nama: name,
+                tarif: tariff,
+                sourceRow: rowIndex,
+                listTagihan: [],
+                grandTotal: 0
+            });
+        }
+        const customer = grouped.get(customerKey);
+        customer.listTagihan.push(bill);
+        customer.grandTotal += total;
+    }
+
+    return {
+        customers: Array.from(grouped.values()).sort((a, b) => a.sourceRow - b.sourceRow),
+        metadata: {
+            headerDetected: Boolean(header),
+            hasCustomerId: mapping.customerId !== undefined,
+            skippedRows,
+            inconsistentRows
+        }
+    };
+}
+
+async function handleFileImport(event) {
+    const input = event.currentTarget;
+    const file = input.files && input.files[0];
+    if (!file) return;
+    if (!(await ensureXLSX())) {
+        input.value = '';
+        return;
+    }
+
+    input.disabled = true;
+    showToast('Membaca seluruh sheet dan menyiapkan cache...', 'warning');
+
+    try {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+        if (!workbook.SheetNames.length) throw new Error('Workbook tidak memiliki sheet');
+
+        const nextSheets = {};
+        const nextOrder = [];
+        let totalCustomers = 0;
+        let sheetsWithoutId = 0;
+        let skippedRows = 0;
+        let inconsistentRows = 0;
+
+        workbook.SheetNames.forEach((sheetName) => {
+            const worksheet = workbook.Sheets[sheetName];
+            const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true, defval: '' });
+            const parsed = parseSheetData(rows, sheetName);
+            nextSheets[sheetName] = parsed.customers;
+            nextOrder.push(sheetName);
+            totalCustomers += parsed.customers.length;
+            skippedRows += parsed.metadata.skippedRows;
+            inconsistentRows += parsed.metadata.inconsistentRows;
+            if (!parsed.metadata.hasCustomerId && parsed.customers.length) sheetsWithoutId += 1;
+        });
+
+        if (!totalCustomers) {
+            throw new Error('Tidak ditemukan baris tagihan dengan nama dan nominal yang valid');
+        }
+
+        databasePerSheet = nextSheets;
+        sheetOrder = nextOrder;
+        workbookName = file.name;
+        datasetId = makeId('dataset');
+        collectionTargets = {};
+        nextOrder.forEach((sheetName) => {
+            collectionTargets[sheetName] = nextSheets[sheetName]
+                .reduce((sum, customer) => sum + customer.grandTotal, 0);
+        });
+        activeSheetName = nextOrder.find((name) => nextSheets[name].length) || nextOrder[0];
+        lastReceipt = null;
+
+        populateSheetSelector();
+        activateSheet(activeSheetName, { persist: false, notify: false });
+        const saved = await persistState(true);
+
+        let note = `${totalCustomers} pelanggan dari ${nextOrder.length} sheet berhasil dimuat`;
+        if (skippedRows) note += `; ${skippedRows} baris tidak valid dilewati`;
+        if (inconsistentRows) note += `; ${inconsistentRows} baris memiliki selisih komponen yang dicatat sebagai biaya lainnya`;
+        if (sheetsWithoutId) note += '; sebaiknya tambahkan kolom ID Pelanggan agar nama yang sama tidak tergabung';
+        if (!saved) note += '; cache perangkat gagal, jangan tutup halaman sebelum diekspor';
+        showToast(note, saved ? (sheetsWithoutId ? 'warning' : 'success') : 'error');
+    } catch (error) {
+        console.error(error);
+        showToast(`Gagal memuat file: ${error.message || 'format tidak didukung'}.`, 'error');
+    } finally {
+        input.disabled = false;
+        input.value = '';
+    }
+}
+
+function populateSheetSelector() {
+    const selector = byId('sheetSelector');
+    selector.replaceChildren();
+    sheetOrder.forEach((sheetName) => {
+        const option = document.createElement('option');
+        option.value = sheetName;
+        option.textContent = sheetName;
+        selector.appendChild(option);
+    });
+    byId('sheetSelectorWrapper').style.display = sheetOrder.length ? 'block' : 'none';
+    if (activeSheetName) selector.value = activeSheetName;
+}
+
+function summarizeSheet(customers = []) {
+    return customers.reduce((summary, customer) => {
+        summary.customers += 1;
+        summary.periods += customer.listTagihan.length;
+        summary.outstanding += customer.grandTotal;
+        return summary;
+    }, { customers: 0, periods: 0, outstanding: 0 });
+}
+
+function transactionsForSheet(sheetName = activeSheetName) {
+    if (!sheetName || !datasetId) return [];
+    return riwayatPembayaran.filter((transaction) => (
+        !transaction.voided
+        && transaction.datasetId === datasetId
+        && transaction.sheet === sheetName
+    ));
+}
+
+function updateDashboard() {
+    const hasSheet = Boolean(activeSheetName && databasePerSheet[activeSheetName]);
+    const customers = hasSheet ? databasePerSheet[activeSheetName] : [];
+    const summary = summarizeSheet(customers);
+    const transactions = hasSheet ? transactionsForSheet(activeSheetName) : [];
+    const collected = transactions.reduce((sum, transaction) => sum + transaction.uangMasuk, 0);
+    const todayCollected = transactions
+        .filter((transaction) => transaction.dateKey === localDateKey())
+        .reduce((sum, transaction) => sum + transaction.uangMasuk, 0);
+    const todayCount = transactions.filter((transaction) => transaction.dateKey === localDateKey()).length;
+
+    if (hasSheet && !Object.prototype.hasOwnProperty.call(collectionTargets, activeSheetName)) {
+        collectionTargets[activeSheetName] = summary.outstanding + collected;
+    }
+    const target = hasSheet ? Math.max(0, roundMoney(collectionTargets[activeSheetName])) : 0;
+    const rawProgress = target > 0 ? (collected / target) * 100 : 0;
+    const barProgress = Math.min(100, Math.max(0, rawProgress));
+    const remainingTarget = Math.max(0, target - collected);
+
+    byId('dashboardSheet').innerText = hasSheet ? activeSheetName : 'Belum ada sheet';
+    byId('dashboardCustomers').innerText = summary.customers;
+    byId('dashboardCustomersNote').innerText = hasSheet
+        ? `${summary.customers} pelanggan masih memiliki tagihan`
+        : 'Belum ada data';
+    byId('dashboardPeriods').innerText = summary.periods;
+    byId('dashboardOutstanding').innerText = `Rp ${formatRupiah(summary.outstanding)}`;
+    byId('dashboardCollected').innerText = `Rp ${formatRupiah(collected)}`;
+    byId('dashboardToday').innerText = `Hari ini: Rp ${formatRupiah(todayCollected)} · ${todayCount} transaksi`;
+    byId('targetInput').value = hasSheet ? target : '';
+    byId('targetInput').disabled = !hasSheet;
+    byId('targetProgressText').innerText = `${Math.round(rawProgress)}%`;
+    byId('targetProgressBar').style.width = `${barProgress}%`;
+    byId('targetProgress').setAttribute('aria-valuenow', String(Math.round(barProgress)));
+    byId('targetCollectedText').innerText = `Terkumpul Rp ${formatRupiah(collected)}`;
+    byId('targetRemainingText').innerText = `Sisa target Rp ${formatRupiah(remainingTarget)}`;
+}
+
+async function simpanTargetTagihan(event) {
+    if (event) event.preventDefault();
+    if (!activeSheetName || !databasePerSheet[activeSheetName]) {
+        showToast('Muat data tagihan terlebih dahulu.', 'warning');
+        return;
+    }
+    const rawValue = byId('targetInput').value;
+    if (rawValue === '') {
+        showToast('Masukkan nominal target penagihan.', 'warning');
+        return;
+    }
+    collectionTargets[activeSheetName] = Math.max(0, roundMoney(parseCurrency(rawValue)));
+    updateDashboard();
+    const saved = await persistState(true);
+    showToast(saved ? `Target sheet ${activeSheetName} berhasil disimpan.` : 'Target berubah, tetapi cache gagal diperbarui.', saved ? 'success' : 'error');
+}
+
+function replaceFilterOptions(selectId, values, defaultLabel) {
+    const select = byId(selectId);
+    const previousValue = select.value;
+    select.replaceChildren();
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = defaultLabel;
+    select.appendChild(defaultOption);
+    values.forEach((value) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+    });
+    select.value = Array.from(select.options).some((option) => option.value === previousValue)
+        ? previousValue
+        : '';
+}
+
+function populateBillFilters() {
+    const tariffs = [...new Set(databasePelanggan.map((customer) => customer.tarif).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'id', { numeric: true }));
+    const periods = [...new Set(databasePelanggan.flatMap((customer) => customer.listTagihan.map((bill) => bill.periode)).filter(Boolean))];
+    replaceFilterOptions('filterTariff', tariffs, 'Semua tarif');
+    replaceFilterOptions('filterPeriod', periods, 'Semua periode');
+}
+
+function applyBillFilters() {
+    const query = normalizeHeader(byId('searchInput').value);
+    const tariff = byId('filterTariff').value;
+    const period = byId('filterPeriod').value;
+    const minimumMonths = Math.max(0, Number(byId('filterMonths').value) || 0);
+    const amountRange = byId('filterAmount').value;
+    const sortMode = byId('filterSort').value;
+    const [minimumAmountText, maximumAmountText] = amountRange ? amountRange.split(':') : ['', ''];
+    const minimumAmount = minimumAmountText === '' ? 0 : Number(minimumAmountText);
+    const maximumAmount = maximumAmountText === '' ? Number.POSITIVE_INFINITY : Number(maximumAmountText);
+
+    const filtered = databasePelanggan.filter((customer) => {
+        const periods = customer.listTagihan.map((bill) => bill.periode);
+        const haystack = normalizeHeader(`${customer.nama} ${customer.customerId} ${customer.tarif} ${periods.join(' ')}`);
+        return (!query || haystack.includes(query))
+            && (!tariff || customer.tarif === tariff)
+            && (!period || periods.includes(period))
+            && customer.listTagihan.length >= minimumMonths
+            && (!amountRange || (customer.grandTotal >= minimumAmount && customer.grandTotal <= maximumAmount));
+    });
+
+    const sorted = [...filtered];
+    if (sortMode === 'amount-desc') sorted.sort((a, b) => b.grandTotal - a.grandTotal);
+    else if (sortMode === 'amount-asc') sorted.sort((a, b) => a.grandTotal - b.grandTotal);
+    else if (sortMode === 'months-desc') sorted.sort((a, b) => b.listTagihan.length - a.listTagihan.length || b.grandTotal - a.grandTotal);
+    else if (sortMode === 'name-asc') sorted.sort((a, b) => a.nama.localeCompare(b.nama, 'id', { numeric: true }));
+    else sorted.sort((a, b) => a.sourceRow - b.sourceRow);
+
+    const hasActiveFilter = Boolean(query || tariff || period || minimumMonths || amountRange || sortMode !== 'default');
+    byId('billFilterPanel').classList.toggle('has-active-filter', hasActiveFilter);
+    byId('filterResultCount').innerText = `${sorted.length}/${databasePelanggan.length}`;
+    tampilkanList(sorted);
+}
+
+function resetBillFilters(options = {}) {
+    const { render = true, clearSearch = true } = options;
+    if (clearSearch) byId('searchInput').value = '';
+    byId('filterTariff').value = '';
+    byId('filterPeriod').value = '';
+    byId('filterMonths').value = '0';
+    byId('filterAmount').value = '';
+    byId('filterSort').value = 'default';
+    byId('billFilterPanel').classList.remove('has-active-filter');
+    if (render) applyBillFilters();
+}
+
+function activateSheet(sheetName, options = {}) {
+    const { persist = true, notify = true } = options;
+    if (!Object.prototype.hasOwnProperty.call(databasePerSheet, sheetName)) return;
+
+    activeSheetName = sheetName;
+    databasePelanggan = databasePerSheet[sheetName];
+    byId('sheetSelector').value = sheetName;
+    resetBillFilters({ render: false });
+    populateBillFilters();
+    resetInvoiceUI();
+    closeSPKView();
+    applyBillFilters();
+    updateDashboard();
+    updateCacheStatus(new Date(), 'cache perangkat');
+    if (persist) persistState(true);
+    if (notify) showToast(`Sheet ${sheetName} aktif: ${databasePelanggan.length} pelanggan.`, 'success');
+}
+
+function gantiSheet() {
+    activateSheet(byId('sheetSelector').value);
+}
+
+function cariPelanggan() {
+    applyBillFilters();
+}
+
+function emptyListMessage(icon, message) {
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'text-align:center;padding:40px 20px;color:var(--text-muted);display:flex;flex-direction:column;align-items:center;gap:10px;';
+    const iconElement = document.createElement('i');
+    iconElement.className = `ph ${icon}`;
+    iconElement.style.cssText = 'font-size:40px;opacity:.5;';
+    const text = document.createElement('span');
+    text.style.fontSize = '13px';
+    text.textContent = message;
+    wrapper.append(iconElement, text);
+    return wrapper;
+}
+
+function tampilkanList(dataArray) {
+    const resultList = byId('resultList');
+    resultList.replaceChildren();
+    if (!dataArray.length) {
+        const message = sheetOrder.length
+            ? 'Tidak ada tagihan ditemukan pada sheet atau pencarian ini.'
+            : 'Belum ada data Excel/CSV yang dimuat.';
+        resultList.appendChild(emptyListMessage('ph-magnifying-glass-minus', message));
+        return;
+    }
+
+    dataArray.forEach((customer) => {
+        const item = document.createElement('div');
+        item.className = `list-item${currentPelanggan && currentPelanggan.key === customer.key ? ' active' : ''}`;
+        item.tabIndex = 0;
+        item.setAttribute('role', 'button');
+        item.setAttribute('aria-label', `Pilih ${customer.nama}, total Rp ${formatRupiah(customer.grandTotal)}`);
+
+        const monthCount = customer.listTagihan.length;
+        const monthBadge = monthCount > 1
+            ? `<span style="background:rgba(239,68,68,.2);color:#ef4444;padding:3px 8px;border-radius:6px;font-size:10px;margin-left:8px;font-weight:bold;border:1px solid rgba(239,68,68,.3);">${monthCount} Bulan</span>`
+            : '';
+        const idInfo = customer.customerId
+            ? `<small style="display:block;color:var(--text-muted);margin-top:2px;">ID: ${escapeHTML(customer.customerId)}</small>`
+            : '';
+
+        item.innerHTML = `
+            <div class="name">${escapeHTML(customer.nama)}${idInfo}</div>
+            <div class="details">
+                <span style="display:flex;align-items:center;">${escapeHTML(customer.tarif)} ${monthBadge}</span>
+                <span style="font-weight:700;color:var(--accent);">Rp ${formatRupiah(customer.grandTotal)}</span>
+            </div>
+        `;
+
+        const select = () => {
+            document.querySelectorAll('.list-item').forEach((element) => element.classList.remove('active'));
+            item.classList.add('active');
+            pilihPelanggan(customer, true);
+        };
+        item.addEventListener('click', select);
+        item.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                select();
+            }
+        });
+        resultList.appendChild(item);
+    });
+}
+
+function getSelectedBills() {
+    if (!currentPelanggan) return [];
+    const ids = Array.from(document.querySelectorAll('#periodeSelector input:checked'))
+        .map((checkbox) => checkbox.dataset.billId);
+    return ids
+        .map((id) => currentPelanggan.listTagihan.find((bill) => bill.id === id))
+        .filter(Boolean);
+}
+
+function setBreakdown(air, beban, denda, lainnya) {
+    byId('billAir').innerText = formatRupiah(air);
+    byId('billBeban').innerText = formatRupiah(beban);
+    byId('billDenda').innerText = formatRupiah(denda);
+    byId('billLainnya').innerText = formatRupiah(lainnya);
+    byId('billLainnyaRow').style.display = lainnya !== 0 ? 'table-row' : 'none';
+}
+
+function pilihPelanggan(customer, autoScroll = false) {
+    currentPelanggan = customer;
+    printableInvoiceReady = true;
+    byId('panelKontrol').style.display = 'block';
+    byId('billNama').innerText = customer.customerId
+        ? `${customer.nama} (${customer.customerId})`
+        : customer.nama;
+    byId('billTarif').innerText = customer.tarif;
+
+    const container = byId('periodeSelector');
+    container.replaceChildren();
+    customer.listTagihan.forEach((bill) => {
+        const row = document.createElement('div');
+        const label = document.createElement('label');
+        label.className = 'checkbox-label';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = true;
+        checkbox.dataset.billId = bill.id;
+        checkbox.addEventListener('change', updateInvoiceDinamis);
+        const labelText = document.createElement('span');
+        labelText.innerHTML = `Bulan: <strong style="margin-left:4px;">${escapeHTML(bill.periode)}</strong>`;
+        label.append(checkbox, labelText);
+        const amount = document.createElement('span');
+        amount.style.cssText = 'font-weight:bold;color:var(--accent);';
+        amount.textContent = `Rp ${formatRupiah(bill.total)}`;
+        row.append(label, amount);
+        container.appendChild(row);
+    });
+
+    updateInvoiceDinamis();
+    if (autoScroll && window.innerWidth <= 768) {
+        byId('invoiceArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function updateInvoiceDinamis() {
+    if (!currentPelanggan) return;
+    const selectedBills = getSelectedBills();
+    const totals = selectedBills.reduce((result, bill) => {
+        result.air += bill.air;
+        result.beban += bill.beban;
+        result.denda += bill.denda;
+        result.lainnya += bill.lainnya || 0;
+        result.total += bill.total;
+        result.periods.push(bill.periode);
+        return result;
+    }, { air: 0, beban: 0, denda: 0, lainnya: 0, total: 0, periods: [] });
+
+    const periodElement = byId('billPeriode');
+    periodElement.innerText = totals.periods.length ? totals.periods.join(', ') : 'Belum Ada Bulan Dipilih';
+    periodElement.style.color = totals.periods.length ? 'var(--accent-hover)' : 'var(--danger)';
+    setBreakdown(totals.air, totals.beban, totals.denda, totals.lainnya);
+    currentTotalTagihan = totals.total;
+    printableInvoiceReady = totals.total > 0;
+    byId('billTotal').innerText = `Rp ${formatRupiah(totals.total)}`;
+    byId('inputBayar').value = '';
+    refreshDocumentDates();
+    hitungPembayaran();
+}
+
+function bayarPas() {
+    if (currentTotalTagihan <= 0) {
+        showToast('Tidak ada tagihan yang dipilih.', 'warning');
+        return;
+    }
+    byId('inputBayar').value = currentTotalTagihan;
+    hitungPembayaran();
+}
+
+function hitungPembayaran() {
+    const rawValue = byId('inputBayar').value;
+    const tendered = Math.max(0, roundMoney(parseCurrency(rawValue)));
+    const applied = Math.min(tendered, currentTotalTagihan);
+    const outstanding = Math.max(0, currentTotalTagihan - applied);
+    const change = Math.max(0, tendered - currentTotalTagihan);
+
+    byId('billDibayar').innerText = `Rp ${formatRupiah(tendered)}`;
+    byId('billDiterima').innerText = `Rp ${formatRupiah(applied)}`;
+
+    const label = byId('labelSisa');
+    const amount = byId('billSisa');
+    const container = byId('sisaContainer');
+    const watermark = byId('watermarkStamp');
+
+    if (currentTotalTagihan <= 0) {
+        label.innerText = '-';
+        amount.innerText = '-';
+        watermark.innerText = 'KOSONG';
+        watermark.className = 'watermark watermark-unpaid';
+        return;
+    }
+
+    if (!rawValue || tendered <= 0) {
+        label.innerText = 'Kekurangan:';
+        amount.innerText = `Rp ${formatRupiah(currentTotalTagihan)}`;
+        container.style.color = 'var(--danger)';
+        watermark.innerText = 'BELUM BAYAR';
+        watermark.className = 'watermark watermark-unpaid';
+    } else if (outstanding > 0) {
+        label.innerText = 'Sisa setelah pembayaran:';
+        amount.innerText = `Rp ${formatRupiah(outstanding)}`;
+        container.style.color = 'var(--warning)';
+        watermark.innerText = 'SEBAGIAN';
+        watermark.className = 'watermark watermark-partial';
+    } else if (change > 0) {
+        label.innerText = 'Uang Kembali:';
+        amount.innerText = `Rp ${formatRupiah(change)}`;
+        container.style.color = 'var(--accent)';
+        watermark.innerText = 'LUNAS';
+        watermark.className = 'watermark watermark-paid';
+    } else {
+        label.innerText = 'Status:';
+        amount.innerText = 'LUNAS (Pas)';
+        container.style.color = 'var(--accent)';
+        watermark.innerText = 'LUNAS';
+        watermark.className = 'watermark watermark-paid';
+    }
+}
+
+function scaleBillToRemainingTotal(bill, newTotal) {
+    const oldTotal = Math.max(0, roundMoney(bill.total));
+    const target = Math.max(0, roundMoney(newTotal));
+    if (!oldTotal || !target) {
+        bill.air = 0;
+        bill.beban = 0;
+        bill.denda = 0;
+        bill.lainnya = 0;
+        bill.total = 0;
+        return;
+    }
+
+    const ratio = target / oldTotal;
+    bill.air = roundMoney(bill.air * ratio);
+    bill.beban = roundMoney(bill.beban * ratio);
+    bill.denda = roundMoney(bill.denda * ratio);
+    bill.lainnya = target - bill.air - bill.beban - bill.denda;
+    bill.total = target;
+}
+
+function recalculateCustomer(customer) {
+    customer.listTagihan = customer.listTagihan
+        .filter((bill) => bill.total > 0)
+        .sort((a, b) => a.sourceRow - b.sourceRow);
+    customer.grandTotal = customer.listTagihan.reduce((sum, bill) => sum + bill.total, 0);
+}
+
+function summarizeBills(bills) {
+    return bills.reduce((summary, bill) => {
+        summary.air += bill.air;
+        summary.beban += bill.beban;
+        summary.denda += bill.denda;
+        summary.lainnya += bill.lainnya || 0;
+        summary.total += bill.total;
+        return summary;
+    }, { air: 0, beban: 0, denda: 0, lainnya: 0, total: 0 });
+}
+
+async function simpanTransaksi() {
+    if (!currentPelanggan) {
+        showToast('Pilih pelanggan terlebih dahulu.', 'warning');
+        return;
+    }
+
+    const selectedBills = getSelectedBills();
+    const tendered = Math.max(0, roundMoney(parseCurrency(byId('inputBayar').value)));
+    if (!selectedBills.length || currentTotalTagihan <= 0) {
+        showToast('Pilih minimal satu periode tagihan.', 'warning');
+        return;
+    }
+    if (tendered <= 0) {
+        showToast('Masukkan nominal uang yang diserahkan pelanggan.', 'warning');
+        return;
+    }
+
+    const saveButton = document.querySelector('.btn-simpan');
+    saveButton.disabled = true;
+    const customerSnapshot = {
+        key: currentPelanggan.key,
+        customerId: currentPelanggan.customerId,
+        nama: currentPelanggan.nama,
+        tarif: currentPelanggan.tarif,
+        sourceRow: currentPelanggan.sourceRow
+    };
+    const selectedSnapshot = selectedBills.map(deepClone);
+    const billSummary = summarizeBills(selectedSnapshot);
+    const appliedAmount = Math.min(tendered, currentTotalTagihan);
+    const change = Math.max(0, tendered - currentTotalTagihan);
+    const remainingSelected = Math.max(0, currentTotalTagihan - appliedAmount);
+    const allocations = [];
+    let paymentLeft = appliedAmount;
+
+    try {
+        selectedBills.forEach((bill) => {
+            if (paymentLeft <= 0) return;
+            const before = deepClone(bill);
+            const appliedToBill = Math.min(paymentLeft, bill.total);
+            const newTotal = bill.total - appliedToBill;
+            bill.paidTotal = Math.max(0, roundMoney((bill.paidTotal || 0) + appliedToBill));
+            scaleBillToRemainingTotal(bill, newTotal);
+            allocations.push({
+                billId: bill.id,
+                applied: appliedToBill,
+                before,
+                after: bill.total > 0 ? deepClone(bill) : null
+            });
+            paymentLeft -= appliedToBill;
+        });
+
+        recalculateCustomer(currentPelanggan);
+        if (!currentPelanggan.listTagihan.length) {
+            databasePelanggan = databasePelanggan.filter((customer) => customer.key !== currentPelanggan.key);
+            databasePerSheet[activeSheetName] = databasePelanggan;
+        }
+
+        const createdAt = new Date().toISOString();
+        const transaction = normalizeTransaction({
+            id: makeId('trx'),
+            createdAt,
+            dateKey: localDateKey(new Date(createdAt)),
+            tanggal: formatDateTime(createdAt),
+            datasetId,
+            sourceFile: workbookName,
+            customerKey: customerSnapshot.key,
+            customerId: customerSnapshot.customerId,
+            nama: customerSnapshot.nama,
+            tarif: customerSnapshot.tarif,
+            periode: selectedSnapshot.map((bill) => bill.periode).join(', '),
+            totalTagihan: currentTotalTagihan,
+            tagihan: currentTotalTagihan,
+            uangDiserahkan: tendered,
+            uangMasuk: appliedAmount,
+            kembalian: change,
+            sisa: remainingSelected,
+            status: remainingSelected > 0 ? 'SEBAGIAN' : 'LUNAS',
+            sheet: activeSheetName,
+            allocations,
+            customerSnapshot,
+            billSummary
+        });
+
+        riwayatPembayaran.unshift(transaction);
+        lastReceipt = transaction;
+        renderReceipt(transaction);
+        populateBillFilters();
+        applyBillFilters();
+        updateDashboard();
+        const saved = await persistState(true);
+        showToast(
+            saved
+                ? `Pembayaran ${customerSnapshot.nama} tersimpan dan cache diperbarui.`
+                : 'Transaksi tercatat pada sesi ini, tetapi cache perangkat gagal diperbarui.',
+            saved ? 'success' : 'error'
+        );
+    } catch (error) {
+        console.error(error);
+        showToast(`Transaksi gagal diproses: ${error.message || 'kesalahan tidak dikenal'}.`, 'error');
+    } finally {
+        saveButton.disabled = false;
+    }
+}
+
+function renderReceipt(transaction) {
+    currentPelanggan = null;
+    currentTotalTagihan = transaction.totalTagihan;
+    printableInvoiceReady = transaction.totalTagihan > 0;
+    byId('panelKontrol').style.display = 'none';
+    byId('inputBayar').value = '';
+    document.querySelectorAll('.list-item').forEach((item) => item.classList.remove('active'));
+
+    byId('billNama').innerText = transaction.customerId
+        ? `${transaction.nama} (${transaction.customerId})`
+        : transaction.nama;
+    byId('billTarif').innerText = transaction.tarif || '-';
+    byId('billPeriode').innerText = transaction.periode || '-';
+    byId('billPeriode').style.color = 'var(--accent-hover)';
+
+    const summary = transaction.billSummary || { air: 0, beban: 0, denda: 0, lainnya: 0 };
+    setBreakdown(summary.air, summary.beban, summary.denda, summary.lainnya || 0);
+    byId('billTotal').innerText = `Rp ${formatRupiah(transaction.totalTagihan)}`;
+    byId('billDibayar').innerText = `Rp ${formatRupiah(transaction.uangDiserahkan)}`;
+    byId('billDiterima').innerText = `Rp ${formatRupiah(transaction.uangMasuk)}`;
+
+    const label = byId('labelSisa');
+    const value = byId('billSisa');
+    const container = byId('sisaContainer');
+    const watermark = byId('watermarkStamp');
+    if (transaction.status === 'SEBAGIAN') {
+        label.innerText = 'Sisa setelah pembayaran:';
+        value.innerText = `Rp ${formatRupiah(transaction.sisa)}`;
+        container.style.color = 'var(--warning)';
+        watermark.innerText = 'SEBAGIAN';
+        watermark.className = 'watermark watermark-partial';
+    } else if (transaction.kembalian > 0) {
+        label.innerText = 'Uang Kembali:';
+        value.innerText = `Rp ${formatRupiah(transaction.kembalian)}`;
+        container.style.color = 'var(--accent)';
+        watermark.innerText = 'LUNAS';
+        watermark.className = 'watermark watermark-paid';
+    } else {
+        label.innerText = 'Status:';
+        value.innerText = 'LUNAS (Pas)';
+        container.style.color = 'var(--accent)';
+        watermark.innerText = 'LUNAS';
+        watermark.className = 'watermark watermark-paid';
+    }
+    refreshDocumentDates();
+}
+
+function resetInvoiceUI() {
+    currentPelanggan = null;
+    currentTotalTagihan = 0;
+    printableInvoiceReady = false;
+    byId('panelKontrol').style.display = 'none';
+    byId('inputBayar').value = '';
+    byId('periodeSelector').replaceChildren();
+    byId('billNama').innerText = '-';
+    byId('billTarif').innerText = '-';
+    byId('billPeriode').innerText = '-';
+    byId('billPeriode').style.color = 'var(--accent-hover)';
+    setBreakdown(0, 0, 0, 0);
+    byId('billTotal').innerText = 'Rp 0';
+    byId('billDibayar').innerText = 'Rp 0';
+    byId('billDiterima').innerText = 'Rp 0';
+    byId('labelSisa').innerText = 'Sisa Kekurangan:';
+    byId('billSisa').innerText = 'Rp 0';
+    const watermark = byId('watermarkStamp');
+    watermark.innerText = 'BELUM BAYAR';
+    watermark.className = 'watermark watermark-unpaid';
+    refreshDocumentDates();
+}
+
+function shortReceiptNumber(transactionId) {
+    const compact = String(transactionId || '').replace(/[^a-z0-9]/gi, '').toUpperCase();
+    return compact ? `TRX-${compact.slice(-8)}` : '-';
+}
+
+function formatThermalPeriod(value) {
+    const periods = String(value || '').split(',').map((item) => item.trim()).filter(Boolean);
+    return periods.join(', ') || '-';
+}
+
+function normalizeThermalBalanceLabel(label) {
+    const text = String(label || '').replace(/:$/, '').trim().toLowerCase();
+    if (text.includes('kembali')) return 'Kembalian';
+    if (text.includes('status')) return 'Status';
+    return 'Sisa Tagihan';
+}
+
+function syncThermalReceipt() {
+    const savedTransaction = !currentPelanggan && lastReceipt && !lastReceipt.voided
+        ? lastReceipt
+        : null;
+    const customerName = currentPelanggan
+        ? currentPelanggan.nama
+        : savedTransaction ? savedTransaction.nama : byId('billNama').innerText;
+    const customerId = currentPelanggan
+        ? currentPelanggan.customerId
+        : savedTransaction ? savedTransaction.customerId : '';
+    const tariff = currentPelanggan
+        ? currentPelanggan.tarif
+        : savedTransaction ? savedTransaction.tarif : byId('billTarif').innerText;
+    const status = savedTransaction
+        ? savedTransaction.status
+        : byId('watermarkStamp').innerText.trim().toUpperCase();
+    const isPaymentReceipt = status === 'LUNAS' || status === 'SEBAGIAN';
+
+    byId('thermalDocumentTitle').innerText = isPaymentReceipt ? 'STRUK PEMBAYARAN' : 'RINCIAN TAGIHAN';
+    byId('thermalReceiptNumber').innerText = savedTransaction ? shortReceiptNumber(savedTransaction.id) : '-';
+    byId('thermalDate').innerText = formatDateTime(savedTransaction ? savedTransaction.createdAt : new Date());
+    byId('thermalCustomerName').innerText = customerName || '-';
+    byId('thermalCustomerId').innerText = customerId || '-';
+    byId('thermalCustomerIdRow').style.display = customerId ? 'grid' : 'none';
+    byId('thermalTariff').innerText = tariff || '-';
+    byId('thermalPeriod').innerText = formatThermalPeriod(byId('billPeriode').innerText);
+
+    byId('thermalAir').innerText = `Rp ${byId('billAir').innerText}`;
+    byId('thermalBeban').innerText = `Rp ${byId('billBeban').innerText}`;
+    byId('thermalDenda').innerText = `Rp ${byId('billDenda').innerText}`;
+    byId('thermalOther').innerText = `Rp ${byId('billLainnya').innerText}`;
+    byId('thermalOtherRow').style.display = byId('billLainnyaRow').style.display === 'none' ? 'none' : 'table-row';
+    byId('thermalTotal').innerText = byId('billTotal').innerText;
+    byId('thermalTendered').innerText = byId('billDibayar').innerText;
+    byId('thermalTenderedRow').style.display = parseCurrency(byId('billDibayar').innerText) > 0 ? 'grid' : 'none';
+    const balanceLabel = normalizeThermalBalanceLabel(byId('labelSisa').innerText);
+    byId('thermalBalanceLabel').innerText = balanceLabel;
+    byId('thermalBalance').innerText = byId('billSisa').innerText;
+    byId('thermalBalanceRow').style.display = status === 'LUNAS' && balanceLabel === 'Status' ? 'none' : 'grid';
+    byId('thermalStatus').innerText = status || 'BELUM BAYAR';
+
+    if (status === 'LUNAS') {
+        byId('thermalNote').innerText = 'Simpan sebagai bukti pembayaran.';
+    } else if (status === 'SEBAGIAN') {
+        byId('thermalNote').innerText = 'Pembayaran sebagian; masih ada sisa tagihan.';
+    } else {
+        byId('thermalNote').innerText = 'Bukan bukti pembayaran.';
+    }
+}
+
+function clearThermalPageSize() {
+    const style = byId('thermalDynamicPageSize');
+    if (style) style.remove();
+}
+
+function updateThermalPageSize() {
+    const receipt = byId('thermalReceipt');
+    receipt.classList.add('thermal-measure');
+    const measuredPixels = Math.max(receipt.scrollHeight, receipt.getBoundingClientRect().height || 0);
+    receipt.classList.remove('thermal-measure');
+
+    const measuredMillimeters = measuredPixels > 0
+        ? Math.ceil((measuredPixels * 25.4 / 96) + 6)
+        : 120;
+    const pageHeight = Math.min(240, Math.max(80, measuredMillimeters));
+    clearThermalPageSize();
+    const style = document.createElement('style');
+    style.id = 'thermalDynamicPageSize';
+    style.textContent = `@page thermalReceipt { size: 58mm ${pageHeight}mm; margin: 0; }`;
+    document.head.appendChild(style);
+}
+
+function preparePrint(mode) {
+    document.body.classList.remove('mode-cetak-spk', 'mode-cetak-thermal');
+    if (mode) document.body.classList.add(mode);
+    refreshDocumentDates();
+    if (mode === 'mode-cetak-thermal') {
+        syncThermalReceipt();
+        updateThermalPageSize();
+    } else {
+        clearThermalPageSize();
+    }
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => window.print()));
+}
+
+function canPrintInvoice() {
+    if (!printableInvoiceReady) {
+        showToast('Pilih tagihan atau simpan transaksi sebelum mencetak.', 'warning');
+        return false;
+    }
+    if (currentPelanggan && parseCurrency(byId('inputBayar').value) > 0) {
+        showToast('Simpan transaksi terlebih dahulu agar status pembayaran pada struk sah.', 'warning');
+        return false;
+    }
+    return true;
+}
+
+function printA4() {
+    if (!canPrintInvoice()) return;
+    preparePrint('');
+}
+
+function bukaPreviewThermal() {
+    if (!canPrintInvoice()) return;
+    thermalPreviewPreviousFocus = document.activeElement;
+    syncThermalReceipt();
+    byId('thermalPreviewHost').appendChild(byId('thermalReceipt'));
+    byId('thermalPreviewModal').classList.add('show');
+    document.body.classList.add('thermal-preview-open');
+    byId('thermalPreviewHost').scrollTop = 0;
+    byId('thermalPreviewPrintButton').focus();
+}
+
+function tutupPreviewThermal() {
+    byId('thermalPreviewModal').classList.remove('show');
+    document.body.classList.remove('thermal-preview-open');
+    clearThermalPageSize();
+    if (thermalPreviewPreviousFocus && typeof thermalPreviewPreviousFocus.focus === 'function') {
+        thermalPreviewPreviousFocus.focus();
+    }
+}
+
+function cetakDariPreviewThermal() {
+    if (!canPrintInvoice()) return;
+    preparePrint('mode-cetak-thermal');
+}
+
+function printThermal() {
+    bukaPreviewThermal();
+}
+
+function tampilkanSPK() {
+    if (!currentPelanggan || !currentPelanggan.listTagihan.length) {
+        showToast('Pilih pelanggan yang masih memiliki tunggakan.', 'warning');
+        return;
+    }
+
+    byId('spkNamaKonsumen').innerText = currentPelanggan.customerId
+        ? `${currentPelanggan.nama} (${currentPelanggan.customerId})`
+        : currentPelanggan.nama;
+    byId('spkTarifKonsumen').innerText = currentPelanggan.tarif;
+    byId('spkJumlahBulan').innerText = currentPelanggan.listTagihan.length;
+    refreshDocumentDates();
+
+    const tbody = byId('spkBodyTable');
+    tbody.replaceChildren();
+    let grandTotal = 0;
+    currentPelanggan.listTagihan.forEach((bill, index) => {
+        grandTotal += bill.total;
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td style="text-align:center;">${index + 1}</td>
+            <td>${escapeHTML(bill.periode)}</td>
+            <td style="text-align:right;">Rp ${formatRupiah(bill.air)}</td>
+            <td style="text-align:right;">Rp ${formatRupiah(bill.beban)}</td>
+            <td style="text-align:right;">Rp ${formatRupiah(bill.denda)}</td>
+            <td style="text-align:right;">Rp ${formatRupiah(bill.lainnya || 0)}</td>
+            <td style="text-align:right;font-weight:bold;">Rp ${formatRupiah(bill.total)}</td>
+        `;
+        tbody.appendChild(row);
+    });
+    byId('spkGrandTotal').innerText = `Rp ${formatRupiah(grandTotal)}`;
+    byId('invoiceArea').style.display = 'none';
+    byId('spkArea').style.display = 'flex';
+}
+
+function closeSPKView() {
+    byId('spkArea').style.display = 'none';
+    byId('invoiceArea').style.display = 'flex';
+    document.body.classList.remove('mode-cetak-spk');
+}
+
+function tutupSPK() {
+    closeSPKView();
+}
+
+function printSPK() {
+    if (!currentPelanggan) {
+        showToast('Data pelanggan untuk SPK tidak tersedia.', 'warning');
+        return;
+    }
+    preparePrint('mode-cetak-spk');
+}
+
+function sanitizeFilename(value) {
+    return String(value || 'data')
+        .replace(/\.[^.]+$/, '')
+        .replace(/[\\/:*?"<>|]+/g, '_')
+        .replace(/\s+/g, '_')
+        .slice(0, 90);
+}
+
+function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.style.display = 'none';
+    document.body.appendChild(anchor);
+    anchor.click();
+    window.setTimeout(() => {
+        URL.revokeObjectURL(url);
+        anchor.remove();
+    }, 3000);
+}
+
+function setWorksheetMoneyFormat(worksheet, startRow, endRow, columns) {
+    columns.forEach((column) => {
+        for (let row = startRow; row <= endRow; row += 1) {
+            const address = XLSX.utils.encode_cell({ r: row, c: column });
+            if (worksheet[address] && worksheet[address].t === 'n') worksheet[address].z = '#,##0';
+        }
+    });
+}
+
+function uniqueSheetName(workbook, preferred) {
+    const base = String(preferred || 'Sheet').slice(0, 31);
+    if (!workbook.SheetNames.includes(base)) return base;
+    for (let index = 2; index < 1000; index += 1) {
+        const suffix = `_${index}`;
+        const candidate = `${base.slice(0, 31 - suffix.length)}${suffix}`;
+        if (!workbook.SheetNames.includes(candidate)) return candidate;
+    }
+    return `Sheet_${Date.now()}`.slice(0, 31);
+}
+
+async function exportDataTerupdate() {
+    if (!sheetOrder.length) {
+        showToast('Belum ada data master untuk diekspor.', 'warning');
+        return;
+    }
+    if (!(await ensureXLSX())) return;
+
+    try {
+        const workbook = XLSX.utils.book_new();
+        let totalCustomers = 0;
+        let totalBills = 0;
+        let totalOutstanding = 0;
+
+        sheetOrder.forEach((sheetName) => {
+            const rows = [[
+                'No.', 'ID Pelanggan', 'Nama Pelanggan', 'Tarif', 'Periode',
+                'Harga Air', 'Beban Tetap', 'Denda', 'Biaya Lainnya',
+                'Total Sisa', 'Sudah Dibayar'
+            ]];
+            let sequence = 1;
+            const customers = databasePerSheet[sheetName] || [];
+            totalCustomers += customers.length;
+            customers.forEach((customer) => {
+                customer.listTagihan.forEach((bill) => {
+                    rows.push([
+                        sequence++, customer.customerId || '', customer.nama, customer.tarif, bill.periode,
+                        bill.air, bill.beban, bill.denda, bill.lainnya || 0,
+                        bill.total, bill.paidTotal || 0
+                    ]);
+                    totalBills += 1;
+                    totalOutstanding += bill.total;
+                });
+            });
+
+            const worksheet = XLSX.utils.aoa_to_sheet(rows);
+            worksheet['!cols'] = [
+                { wch: 7 }, { wch: 18 }, { wch: 30 }, { wch: 15 }, { wch: 18 },
+                { wch: 15 }, { wch: 15 }, { wch: 13 }, { wch: 15 }, { wch: 16 }, { wch: 16 }
+            ];
+            worksheet['!autofilter'] = { ref: `A1:K${Math.max(rows.length, 1)}` };
+            setWorksheetMoneyFormat(worksheet, 1, rows.length - 1, [5, 6, 7, 8, 9, 10]);
+            XLSX.utils.book_append_sheet(workbook, worksheet, uniqueSheetName(workbook, sheetName));
+        });
+
+        const summaryRows = [
+            ['RINGKASAN SISA TAGIHAN'],
+            ['File Sumber', workbookName || '-'],
+            ['Waktu Ekspor', formatDateTime(new Date())],
+            ['Jumlah Sheet', sheetOrder.length],
+            ['Jumlah Pelanggan Tersisa', totalCustomers],
+            ['Jumlah Baris Tagihan', totalBills],
+            ['Total Sisa Tagihan', totalOutstanding]
+        ];
+        const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
+        summarySheet['!cols'] = [{ wch: 30 }, { wch: 35 }];
+        if (summarySheet.B7) summarySheet.B7.z = '#,##0';
+        XLSX.utils.book_append_sheet(workbook, summarySheet, uniqueSheetName(workbook, 'Ringkasan'));
+
+        const output = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+        const filename = `Sisa_Tagihan_${sanitizeFilename(workbookName || 'Master')}_${localDateKey()}.xlsx`;
+        downloadBlob(new Blob([output], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), filename);
+        showToast(`Seluruh ${sheetOrder.length} sheet berhasil disiapkan untuk diunduh.`, 'success');
+    } catch (error) {
+        console.error(error);
+        showToast(`Ekspor Excel gagal: ${error.message || 'browser menolak unduhan'}.`, 'error');
+    }
+}
+
+function getReportDate() {
+    return byId('reportDate').value || localDateKey();
+}
+
+function transactionsForReport() {
+    const selectedDate = getReportDate();
+    return riwayatPembayaran.filter((transaction) => {
+        const key = transaction.dateKey || localDateKey(new Date(transaction.createdAt));
+        return key === selectedDate;
+    });
+}
+
+function bukaLaporan() {
+    modalPreviousFocus = document.activeElement;
+    byId('reportDate').value = byId('reportDate').value || localDateKey();
+    byId('laporanModal').style.display = 'block';
+    renderTabelLaporan();
+    byId('laporanModal').querySelector('.modal-content').focus();
+}
+
+function tutupLaporan() {
+    byId('laporanModal').style.display = 'none';
+    if (modalPreviousFocus && typeof modalPreviousFocus.focus === 'function') modalPreviousFocus.focus();
+}
+
+function renderTabelLaporan() {
+    const tbody = byId('bodyLaporan');
+    tbody.replaceChildren();
+    const transactions = transactionsForReport();
+    let totalTagihan = 0;
+    let totalUangMasuk = 0;
+    let totalKembalian = 0;
+
+    if (!transactions.length) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 8;
+        cell.style.cssText = 'text-align:center;color:var(--text-muted);padding:30px;';
+        cell.textContent = `Belum ada transaksi pada ${formatLongDate(getReportDate())}.`;
+        row.appendChild(cell);
+        tbody.appendChild(row);
+    }
+
+    transactions.forEach((transaction) => {
+        const isVoided = Boolean(transaction.voided);
+        if (!isVoided) {
+            totalTagihan += transaction.totalTagihan;
+            totalUangMasuk += transaction.uangMasuk;
+            totalKembalian += transaction.kembalian;
+        }
+
+        const status = isVoided ? 'BATAL' : transaction.status;
+        const statusClass = status === 'LUNAS'
+            ? 'status-lunas'
+            : status === 'SEBAGIAN' ? 'status-sebagian' : 'status-batal';
+        const row = document.createElement('tr');
+        if (isVoided) row.style.opacity = '0.65';
+        row.innerHTML = `
+            <td style="font-size:12px;color:var(--text-muted);">${escapeHTML(formatDateTime(transaction.createdAt))}</td>
+            <td style="font-weight:600;">${escapeHTML(transaction.nama)}
+                <br><small style="color:var(--text-muted);font-weight:normal;">Sheet: ${escapeHTML(transaction.sheet || 'Master')}</small>
+            </td>
+            <td>${escapeHTML(transaction.periode)}</td>
+            <td style="font-weight:500;">Rp ${formatRupiah(transaction.totalTagihan)}</td>
+            <td style="color:var(--accent);font-weight:600;">Rp ${formatRupiah(transaction.uangMasuk)}</td>
+            <td>Rp ${formatRupiah(transaction.kembalian)}</td>
+            <td><span class="status-badge ${statusClass}">${status}</span></td>
+            <td></td>
+        `;
+
+        const actionCell = row.lastElementChild;
+        if (!isVoided) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.style.cssText = 'background:rgba(239,68,68,.1);color:var(--danger);border:1px solid rgba(239,68,68,.3);padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;';
+            button.innerHTML = '<i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i> Batalkan';
+            button.addEventListener('click', () => batalkanTransaksi(transaction.id));
+            actionCell.appendChild(button);
+        } else {
+            actionCell.textContent = '-';
+        }
+        tbody.appendChild(row);
+    });
+
+    byId('htmlTotalTagihan').innerText = `Rp ${formatRupiah(totalTagihan)}`;
+    byId('htmlTotalUangMasuk').innerText = `Rp ${formatRupiah(totalUangMasuk)}`;
+    byId('htmlTotalKembalian').innerText = `Rp ${formatRupiah(totalKembalian)}`;
+}
+
+async function batalkanTransaksi(transactionId) {
+    const transaction = riwayatPembayaran.find((item) => item.id === transactionId);
+    if (!transaction || transaction.voided) return;
+
+    const canRestore = transaction.allocations && transaction.allocations.length
+        && transaction.datasetId === datasetId
+        && transaction.sheet && databasePerSheet[transaction.sheet];
+    const fromDifferentDataset = transaction.datasetId && transaction.datasetId !== datasetId;
+    const message = canRestore
+        ? 'Batalkan transaksi ini dan kembalikan tagihan pelanggan ke sisa data?'
+        : fromDifferentDataset
+            ? 'Transaksi berasal dari file master lain. Tandai sebagai batal tanpa memasukkan tagihan lama ke data aktif?'
+            : 'Ini riwayat lama tanpa detail alokasi. Tandai transaksi sebagai batal tanpa mengubah sisa tagihan?';
+    if (!window.confirm(message)) return;
+
+    if (canRestore) {
+        const customers = databasePerSheet[transaction.sheet];
+        let customer = customers.find((item) => item.key === transaction.customerKey);
+        if (!customer) {
+            const snapshot = transaction.customerSnapshot || {};
+            customer = {
+                key: transaction.customerKey || makeCustomerKey(transaction.customerId, transaction.nama, transaction.tarif),
+                customerId: transaction.customerId || snapshot.customerId || '',
+                nama: transaction.nama || snapshot.nama || 'Tanpa Nama',
+                tarif: transaction.tarif || snapshot.tarif || '-',
+                sourceRow: snapshot.sourceRow || Number.MAX_SAFE_INTEGER,
+                listTagihan: [],
+                grandTotal: 0
+            };
+            customers.push(customer);
+        }
+
+        transaction.allocations.forEach((allocation) => {
+            const restoredBill = normalizeBill(
+                deepClone(allocation.before), transaction.sheet, customer.key, customer.listTagihan.length
+            );
+            const existingIndex = customer.listTagihan.findIndex((bill) => bill.id === restoredBill.id);
+            if (existingIndex >= 0) customer.listTagihan[existingIndex] = restoredBill;
+            else customer.listTagihan.push(restoredBill);
+        });
+        recalculateCustomer(customer);
+        customers.sort((a, b) => a.sourceRow - b.sourceRow);
+    }
+
+    transaction.voided = true;
+    transaction.voidedAt = new Date().toISOString();
+    transaction.status = 'BATAL';
+    if (lastReceipt && lastReceipt.id === transaction.id) {
+        lastReceipt = null;
+        resetInvoiceUI();
+    }
+    if (activeSheetName === transaction.sheet) {
+        databasePelanggan = databasePerSheet[activeSheetName];
+        populateBillFilters();
+        applyBillFilters();
+    }
+    updateDashboard();
+    await persistState(true);
+    renderTabelLaporan();
+    showToast(canRestore ? 'Transaksi dibatalkan dan tagihan telah dikembalikan.' : 'Riwayat ditandai batal.', 'success');
+}
+
+async function exportPDF() {
+    const transactions = transactionsForReport();
+    if (!transactions.length) {
+        showToast('Tidak ada transaksi pada tanggal laporan.', 'warning');
+        return;
+    }
+    if (!(await ensurePDFLibraries())) return;
+
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('landscape', 'mm', 'a4');
+        doc.setFontSize(16);
+        doc.text('Laporan Data Pembayaran Pelanggan', 14, 18);
+        doc.setFontSize(10);
+        doc.text(`Tanggal Laporan: ${formatLongDate(getReportDate())}`, 14, 26);
+        doc.text(`Waktu Ekspor: ${formatDateTime(new Date())}`, 14, 32);
+
+        let totalTagihan = 0;
+        let totalMasuk = 0;
+        let totalKembalian = 0;
+        const rows = transactions.map((transaction) => {
+            const status = transaction.voided ? 'BATAL' : transaction.status;
+            if (!transaction.voided) {
+                totalTagihan += transaction.totalTagihan;
+                totalMasuk += transaction.uangMasuk;
+                totalKembalian += transaction.kembalian;
+            }
+            return [
+                formatDateTime(transaction.createdAt), transaction.nama, transaction.sheet || '-',
+                transaction.periode, formatRupiah(transaction.totalTagihan),
+                formatRupiah(transaction.uangMasuk), formatRupiah(transaction.kembalian), status
+            ];
+        });
+
+        doc.autoTable({
+            head: [['Waktu', 'Nama', 'Sheet', 'Periode', 'Tagihan', 'Diterima', 'Kembalian', 'Status']],
+            body: rows,
+            startY: 38,
+            styles: { fontSize: 8, cellPadding: 2 },
+            headStyles: { fillColor: [16, 185, 129] }
+        });
+
+        let finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY ? doc.lastAutoTable.finalY : 38) + 10;
+        if (finalY > 185) {
+            doc.addPage();
+            finalY = 18;
+        }
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'bold');
+        doc.text(`Total Nilai Tagihan Dipilih: Rp ${formatRupiah(totalTagihan)}`, 14, finalY);
+        doc.text(`Total Uang Diterima: Rp ${formatRupiah(totalMasuk)}`, 14, finalY + 7);
+        doc.setFont(undefined, 'normal');
+        doc.text(`Total Kembalian: Rp ${formatRupiah(totalKembalian)}`, 14, finalY + 14);
+
+        const filename = `Laporan_Pembayaran_${getReportDate()}.pdf`;
+        downloadBlob(doc.output('blob'), filename);
+        showToast('Laporan PDF berhasil disiapkan untuk diunduh.', 'success');
+    } catch (error) {
+        console.error(error);
+        showToast(`Ekspor PDF gagal: ${error.message || 'browser menolak unduhan'}.`, 'error');
+    }
+}
+
+async function exportKeExcel() {
+    const transactions = transactionsForReport();
+    if (!transactions.length) {
+        showToast('Tidak ada transaksi pada tanggal laporan.', 'warning');
+        return;
+    }
+    if (!(await ensureXLSX())) return;
+
+    try {
+        const rows = [[
+            'Waktu Pembayaran', 'ID Pelanggan', 'Nama Pelanggan', 'Asal Sheet',
+            'Periode Tagihan', 'Total Tagihan', 'Uang Diserahkan',
+            'Uang Diterima', 'Kembalian', 'Sisa', 'Status'
+        ]];
+        let totalTagihan = 0;
+        let totalDiserahkan = 0;
+        let totalMasuk = 0;
+        let totalKembalian = 0;
+
+        transactions.forEach((transaction) => {
+            const status = transaction.voided ? 'BATAL' : transaction.status;
+            rows.push([
+                formatDateTime(transaction.createdAt), transaction.customerId || '', transaction.nama,
+                transaction.sheet || 'Master', transaction.periode, transaction.totalTagihan,
+                transaction.uangDiserahkan, transaction.uangMasuk, transaction.kembalian,
+                transaction.sisa, status
+            ]);
+            if (!transaction.voided) {
+                totalTagihan += transaction.totalTagihan;
+                totalDiserahkan += transaction.uangDiserahkan;
+                totalMasuk += transaction.uangMasuk;
+                totalKembalian += transaction.kembalian;
+            }
+        });
+
+        rows.push([]);
+        rows.push(['TOTAL', '', '', '', '', totalTagihan, totalDiserahkan, totalMasuk, totalKembalian, '', '']);
+        const worksheet = XLSX.utils.aoa_to_sheet(rows);
+        worksheet['!cols'] = [
+            { wch: 20 }, { wch: 18 }, { wch: 28 }, { wch: 18 }, { wch: 28 },
+            { wch: 16 }, { wch: 17 }, { wch: 16 }, { wch: 14 }, { wch: 14 }, { wch: 12 }
+        ];
+        worksheet['!autofilter'] = { ref: `A1:K${transactions.length + 1}` };
+        setWorksheetMoneyFormat(worksheet, 1, rows.length - 1, [5, 6, 7, 8, 9]);
+
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Laporan Harian');
+        const output = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+        downloadBlob(
+            new Blob([output], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+            `Rekap_Pembayaran_${getReportDate()}.xlsx`
+        );
+        showToast('Laporan Excel berhasil disiapkan untuk diunduh.', 'success');
+    } catch (error) {
+        console.error(error);
+        showToast(`Ekspor Excel gagal: ${error.message || 'browser menolak unduhan'}.`, 'error');
+    }
+}
+
+async function initializeApp() {
+    refreshDocumentDates();
+    byId('reportDate').value = localDateKey();
+    byId('resultList').replaceChildren(emptyListMessage('ph-spinner-gap', 'Memuat data tersimpan...'));
+    riwayatPembayaran = readLegacyHistory();
+
+    const state = await readPersistedState();
+    if (state && restoreState(state)) {
+        showToast(`Data ${workbookName} dipulihkan dari cache.`, 'success');
+    } else {
+        populateBillFilters();
+        resetBillFilters({ render: false });
+        applyBillFilters();
+        updateDashboard();
+    }
+}
+
+byId('dataFile').addEventListener('change', handleFileImport);
+byId('laporanModal').addEventListener('click', (event) => {
+    if (event.target === byId('laporanModal')) tutupLaporan();
+});
+byId('thermalPreviewModal').addEventListener('click', (event) => {
+    if (event.target === byId('thermalPreviewModal')) tutupPreviewThermal();
+});
+document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    if (byId('thermalPreviewModal').classList.contains('show')) tutupPreviewThermal();
+    else if (byId('laporanModal').style.display === 'block') tutupLaporan();
+});
+window.addEventListener('beforeprint', () => {
+    if (!byId('thermalPreviewModal').classList.contains('show')) return;
+    document.body.classList.remove('mode-cetak-spk');
+    document.body.classList.add('mode-cetak-thermal');
+    syncThermalReceipt();
+    updateThermalPageSize();
+});
+window.addEventListener('afterprint', () => {
+    document.body.classList.remove('mode-cetak-spk', 'mode-cetak-thermal');
+    clearThermalPageSize();
+});
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && sheetOrder.length) persistState(true);
+});
+
+initializeApp().catch((error) => {
+    console.error(error);
+    tampilkanList([]);
+    updateDashboard();
+    showToast('Aplikasi gagal memulihkan cache, tetapi file baru tetap dapat diunggah.', 'error');
+});
+</script>
+
+</body>
+</html>
